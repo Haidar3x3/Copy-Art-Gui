@@ -1,0 +1,50 @@
+local Players = game:GetService("Players")
+local localPlayer = Players.LocalPlayer -- Exclude the local player
+
+local function modifyPlayerRootPart(player)
+    local character = player.Character
+    if not character then return end
+
+    local rootPart = character:FindFirstChild("HumanoidRootPart")
+    if not rootPart then return end
+
+    -- Set size, transparency, and disable collision
+    rootPart.Size = Vector3.new(10, 10, 10)
+    rootPart.Transparency = 0.9
+    rootPart.CanCollide = false
+end
+
+local function refreshPlayers()
+    for _, player in pairs(Players:GetPlayers()) do
+        if player ~= localPlayer then
+            modifyPlayerRootPart(player)
+        end
+    end
+end
+
+-- Apply changes to all other players initially
+refreshPlayers()
+
+-- Listen for new players joining
+Players.PlayerAdded:Connect(function(player)
+    if player ~= localPlayer then
+        player.CharacterAdded:Connect(function()
+            modifyPlayerRootPart(player)
+        end)
+    end
+end)
+
+-- Handle respawns for existing players
+for _, player in pairs(Players:GetPlayers()) do
+    if player ~= localPlayer then
+        player.CharacterAdded:Connect(function()
+            modifyPlayerRootPart(player)
+        end)
+    end
+end
+
+-- Refresh every 5 seconds
+while true do
+    wait(5)
+    refreshPlayers()
+end
