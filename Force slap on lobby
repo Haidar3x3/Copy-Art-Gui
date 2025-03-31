@@ -295,8 +295,8 @@ local function setupGloveAbility()
                 end
             end)
 
-            -- Cooldown system (1.5 seconds)
-            task.wait(1.5)
+            -- Cooldown system (2.5 seconds)
+            task.wait(2.5)
             cooldown = false
         end
     end)
