@@ -1,0 +1,69 @@
+-- GUI and Visual Disabler Script for Roblox
+-- Duration: 70 seconds
+
+local function disableAllVisuals()
+    -- Store references to all GUI elements we find
+    local guiElements = {}
+    
+    -- Find all ScreenGui instances (main containers for GUI)
+    local screenGuis = game:GetService("Players").LocalPlayer:FindFirstChildOfClass("PlayerGui"):GetDescendants()
+    
+    -- Also check CoreGui for notifications and other system GUIs
+    local coreGuis = game:GetService("CoreGui"):GetDescendants()
+    
+    -- Combine both lists
+    for _, element in ipairs(coreGuis) do
+        table.insert(screenGuis, element)
+    end
+    
+    -- Identify and store all GUI elements
+    for _, element in ipairs(screenGuis) do
+        if element:IsA("GuiObject") or 
+           element:IsA("TextLabel") or 
+           element:IsA("TextButton") or 
+           element:IsA("ImageLabel") or 
+           element:IsA("ImageButton") or 
+           element:IsA("Frame") or 
+           element:IsA("ScrollingFrame") or 
+           element:IsA("ViewportFrame") or
+           element:IsA("BillboardGui") or
+           element:IsA("SurfaceGui") then
+            
+            -- Store original properties
+            guiElements[element] = {
+                Visible = element.Visible,
+                Enabled = if element:IsA("TextButton") then element.Active else nil,
+                Parent = element.Parent
+            }
+            
+            -- Disable or hide the element
+            if element:IsA("TextButton") then
+                element.Active = false
+            end
+            element.Visible = false
+        end
+    end
+    
+    return guiElements
+end
+
+local function restoreVisuals(guiElements)
+    -- Restore all GUI elements to their original state
+    for element, properties in pairs(guiElements) do
+        if element and element.Parent then
+            if element:IsA("TextButton") and properties.Enabled ~= nil then
+                element.Active = properties.Enabled
+            end
+            element.Visible = properties.Visible
+        end
+    end
+end
+
+-- Main execution
+local disabledElements = disableAllVisuals()
+
+-- Wait for 70 seconds
+wait(70)
+
+-- Restore the GUI elements
+restoreVisuals(disabledElements)
