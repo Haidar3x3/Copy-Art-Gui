@@ -1,68 +1,90 @@
--- Dynamic GUI/Notification Disabler (New Elements Only)
+-- Whitelist-First GUI Cleaner (1 Minute Duration)
+local RunService = game:GetService("RunService")
 local Players = game:GetService("Players")
 local CoreGui = game:GetService("CoreGui")
 local LocalPlayer = Players.LocalPlayer
 local PlayerGui = LocalPlayer:WaitForChild("PlayerGui")
 
 -- Configuration
+local DURATION = 60 -- 1 minute duration
 local DESTROY_INSTEAD_OF_HIDE = true -- Set to false to just hide elements
-local SCAN_INTERVAL = 0.5 -- Seconds between scans for new GUIs
+local SCAN_DELAY = 0.1 -- Delay between scans (seconds)
 
--- List to keep track of existing GUI elements
-local existingElements = {}
+-- Whitelist storage
+local whitelist = {}
 
--- Function to record all current GUI elements
-local function recordExistingElements()
+-- Function to whitelist all existing elements
+local function whitelistExistingElements()
+    -- Whitelist PlayerGui elements
     for _, element in ipairs(PlayerGui:GetDescendants()) do
-        existingElements[element] = true
+        whitelist[element] = true
     end
+    
+    -- Whitelist CoreGui elements (careful with this)
     for _, element in ipairs(CoreGui:GetDescendants()) do
-        existingElements[element] = true
+        -- Skip potentially dangerous CoreGui elements
+        if not element:IsA("LayerCollector") then
+            whitelist[element] = true
+        end
     end
+    
+    print("Whitelisted", table.count(whitelist), "existing GUI elements")
 end
 
--- Function to handle new GUI elements
+-- Function to handle new elements
 local function handleNewElement(element)
-    -- Skip if this is a known existing element
-    if existingElements[element] then return end
+    -- Skip if already whitelisted
+    if whitelist[element] then return end
     
-    -- Mark as processed
-    existingElements[element] = true
+    -- Skip certain base classes
+    if element:IsA("LayerCollector") or element:IsA("UIStyle") then
+        whitelist[element] = true
+        return
+    end
     
-    -- Only process actual GUI objects
+    -- Only process GUI elements
     if element:IsA("GuiObject") or element:IsA("TextLabel") or element:IsA("TextButton") then
         if DESTROY_INSTEAD_OF_HIDE then
             element:Destroy()
+            if VERBOSE then print("Destroyed new element:", element:GetFullName()) end
         else
             element.Visible = false
             if element:IsA("TextButton") or element:IsA("ImageButton") then
                 element.Active = false
             end
+            if VERBOSE then print("Disabled new element:", element:GetFullName()) end
         end
+    else
+        -- Whitelist non-GUI elements
+        whitelist[element] = true
     end
 end
 
--- Initial scan to record existing elements
-recordExistingElements()
-
--- Set up continuous scanner
+-- Main scanning function
 local function scanForNewElements()
-    while true do
-        wait(SCAN_INTERVAL)
-        
-        -- Check PlayerGui for new elements
+    local startTime = os.clock()
+    
+    while os.clock() - startTime < DURATION do
+        -- Scan PlayerGui for new elements
         for _, element in ipairs(PlayerGui:GetDescendants()) do
             handleNewElement(element)
         end
         
-        -- Check CoreGui for new elements
+        -- Scan CoreGui for new elements (carefully)
         for _, element in ipairs(CoreGui:GetDescendants()) do
-            handleNewElement(element)
+            if not string.find(tostring(element.Parent), "CoreGui") then
+                handleNewElement(element)
+            end
         end
+        
+        wait(SCAN_DELAY)
     end
+    
+    print("GUI cleaning completed after 1 minute")
 end
 
--- Start the scanner
-spawn(scanForNewElements)
+-- Initialization
+whitelistExistingElements()
 
-print("Active GUI monitor running - will disable only NEW interface elements")
+-- Start scanning in a separate thread
+coroutine.wrap(scanForNewElements)()
