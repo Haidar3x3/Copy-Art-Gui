@@ -9,7 +9,7 @@ local function modifyPlayerRootPart(player)
     if not rootPart then return end
 
     -- Set size, transparency, and disable collision
-    rootPart.Size = Vector3.new(10, 10, 10)
+    rootPart.Size = Vector3.new(20, 20, 20)
     rootPart.Transparency = 0.9
     rootPart.CanCollide = false
 end
