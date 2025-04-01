@@ -1,101 +1,14 @@
--- New GUI Element Detector & Cleaner (1 Minute Duration)
-local RunService = game:GetService("RunService")
-local Players = game:GetService("Players")
-local CoreGui = game:GetService("CoreGui")
-local LocalPlayer = Players.LocalPlayer
-local PlayerGui = LocalPlayer:WaitForChild("PlayerGui")
-
--- Configuration
-local DURATION = 60 -- 1 minute duration
-local DESTROY_INSTEAD_OF_HIDE = true -- Set to false to just hide
-local PROTECT_ROBLOX_UI = true -- Protect official Roblox UI elements
-
--- Tracking
-local connections = {}
-local cleanupConnections = {}
-local startTime = os.clock()
-
--- Function to check if element is Roblox UI
-local function isRobloxUI(element)
-    if not PROTECT_ROBLOX_UI then return false end
+local oldNew = Instance.new
+Instance.new = function(className, parent)
+    local newObj = oldNew(className, parent)
     
-    local protectedNames = {
-        "Chat", "PlayerList", "Health", "Backpack", 
-        "EmotesMenu", "Settings", "ShiftLock", 
-        "CoreScriptLocalization", "DevConsoleMaster",
-        "BubbleChat", "Notification", "RobloxLoadingGUI",
-        "RobloxGui", "TopBar"
-    }
-    
-    for _, name in ipairs(protectedNames) do
-        if element:IsDescendantOf(CoreGui) and element.Name == name then
-            return true
-        end
+    -- Block ScreenGuis or other GUI elements
+    if className == "ScreenGui" or className == "Frame" or className == "TextButton" then
+        newObj:Destroy() -- Immediately destroy it
+        return newObj -- Return the destroyed object (won't show)
     end
-    return false
+    
+    return newObj
 end
 
--- Function to clean new elements
-local function cleanNewElement(element)
-    -- Skip Roblox UI elements if protection is enabled
-    if isRobloxUI(element) then return end
-    
-    -- Only process GUI elements
-    if element:IsA("GuiObject") or element:IsA("TextLabel") or element:IsA("TextButton") then
-        if DESTROY_INSTEAD_OF_HIDE then
-            element:Destroy()
-            print("Destroyed new GUI:", element:GetFullName())
-        else
-            element.Visible = false
-            if element:IsA("TextButton") or element:IsA("ImageButton") then
-                element.Active = false
-            end
-            print("Disabled new GUI:", element:GetFullName())
-        end
-    end
-    
-    -- Set up watcher for this element's children
-    connections[element] = element.DescendantAdded:Connect(cleanNewElement)
-end
-
--- Set up main watchers
-local function setupWatchers()
-    -- Watch PlayerGui
-    connections.playerGui = PlayerGui.DescendantAdded:Connect(cleanNewElement)
-    
-    -- Watch CoreGui (carefully)
-    if not PROTECT_ROBLOX_UI then
-        connections.coreGui = CoreGui.DescendantAdded:Connect(cleanNewElement)
-    end
-    
-    -- Set up cleanup after duration
-    cleanupConnections.duration = RunService.Heartbeat:Connect(function()
-        if os.clock() - startTime >= DURATION then
-            cleanup()
-        end
-    end)
-end
-
--- Cleanup function
-local function cleanup()
-    print("Stopping GUI detection after 1 minute")
-    
-    -- Disconnect all watchers
-    for _, connection in pairs(connections) do
-        connection:Disconnect()
-    end
-    
-    for _, connection in pairs(cleanupConnections) do
-        connection:Disconnect()
-    end
-    
-    connections = {}
-    cleanupConnections = {}
-end
-
--- Start the detection
-setupWatchers()
-print("New GUI detection active for 1 minute...")
-
--- Safety net cleanup
-delay(DURATION + 5, cleanup)
+print("GUI blocking active! ScreenGuis, Frames, and Buttons will be destroyed.")
