@@ -1,14 +1,83 @@
-local oldNew = Instance.new
-Instance.new = function(className, parent)
-    local newObj = oldNew(className, parent)
-    
-    -- Block ScreenGuis or other GUI elements
-    if className == "ScreenGui" or className == "Frame" or className == "TextButton" then
-        newObj:Destroy() -- Immediately destroy it
-        return newObj -- Return the destroyed object (won't show)
+-- Timed GUI Cleaner (70 seconds duration)
+local Players = game:GetService("Players")
+local RunService = game:GetService("RunService")
+local CoreGui = game:GetService("CoreGui")
+local LocalPlayer = Players.LocalPlayer
+local PlayerGui = LocalPlayer:WaitForChild("PlayerGui")
+
+-- Whitelist of essential GUI elements
+local WHITELIST = {
+    ["TouchControlFrame"] = true,  -- Mobile controls
+    ["TouchGui"] = true,           -- Mobile controls alternative
+    ["JumpButton"] = true,
+    ["Health"] = true,
+    ["Backpack"] = true,
+    ["Chat"] = true,
+    ["PlayerList"] = true,
+    ["ShiftLock"] = true,
+    ["RobloxGui"] = true,          -- Core Roblox UI
+    -- Add other essential elements from your game
+}
+
+-- List of GUI classes we want to block
+local TARGET_CLASSES = {
+    Frame = true,
+    TextLabel = true,
+    TextButton = true,
+    ImageLabel = true,
+    ImageButton = true,
+    ScrollingFrame = true,
+    ViewportFrame = true,
+    BillboardGui = true,
+    SurfaceGui = true,
+    ScreenGui = true,
+    Notification = true
+}
+
+local function isWhitelisted(guiObject)
+    -- Check if this GUI or its parent is whitelisted
+    local current = guiObject
+    while current do
+        if WHITELIST[current.Name] then
+            return true
+        end
+        current = current.Parent
     end
-    
-    return newObj
+    return false
 end
 
-print("GUI blocking active! ScreenGuis, Frames, and Buttons will be destroyed.")
+local function cleanGUI()
+    -- Clean PlayerGui
+    for _, gui in ipairs(PlayerGui:GetDescendants()) do
+        if TARGET_CLASSES[gui.ClassName] and not isWhitelisted(gui) then
+            gui.Visible = false
+            if gui:IsA("TextButton") or gui:IsA("ImageButton") then
+                gui.Active = false
+            end
+        end
+    end
+    
+    -- Clean CoreGui (notifications)
+    for _, gui in ipairs(CoreGui:GetDescendants()) do
+        if TARGET_CLASSES[gui.ClassName] and not isWhitelisted(gui) then
+            gui.Visible = false
+            if gui:IsA("TextButton") or gui:IsA("ImageButton") then
+                gui.Active = false
+            end
+        end
+    end
+end
+
+-- Start the cleaning process
+local startTime = os.time()
+local connection = RunService.Heartbeat:Connect(function()
+    cleanGUI()
+    
+    -- Stop after 70 seconds
+    if os.time() - startTime >= 70 then
+        connection:Disconnect()
+        print("GUI cleaning stopped after 70 seconds")
+    end
+end)
+
+print("GUI cleaning active for 70 seconds...")
