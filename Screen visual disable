@@ -1,69 +1,68 @@
--- GUI and Visual Disabler Script for Roblox
--- Duration: 70 seconds
+-- Dynamic GUI/Notification Disabler (New Elements Only)
+local Players = game:GetService("Players")
+local CoreGui = game:GetService("CoreGui")
+local LocalPlayer = Players.LocalPlayer
+local PlayerGui = LocalPlayer:WaitForChild("PlayerGui")
 
-local function disableAllVisuals()
-    -- Store references to all GUI elements we find
-    local guiElements = {}
-    
-    -- Find all ScreenGui instances (main containers for GUI)
-    local screenGuis = game:GetService("Players").LocalPlayer:FindFirstChildOfClass("PlayerGui"):GetDescendants()
-    
-    -- Also check CoreGui for notifications and other system GUIs
-    local coreGuis = game:GetService("CoreGui"):GetDescendants()
-    
-    -- Combine both lists
-    for _, element in ipairs(coreGuis) do
-        table.insert(screenGuis, element)
+-- Configuration
+local DESTROY_INSTEAD_OF_HIDE = true -- Set to false to just hide elements
+local SCAN_INTERVAL = 0.5 -- Seconds between scans for new GUIs
+
+-- List to keep track of existing GUI elements
+local existingElements = {}
+
+-- Function to record all current GUI elements
+local function recordExistingElements()
+    for _, element in ipairs(PlayerGui:GetDescendants()) do
+        existingElements[element] = true
     end
+    for _, element in ipairs(CoreGui:GetDescendants()) do
+        existingElements[element] = true
+    end
+end
+
+-- Function to handle new GUI elements
+local function handleNewElement(element)
+    -- Skip if this is a known existing element
+    if existingElements[element] then return end
     
-    -- Identify and store all GUI elements
-    for _, element in ipairs(screenGuis) do
-        if element:IsA("GuiObject") or 
-           element:IsA("TextLabel") or 
-           element:IsA("TextButton") or 
-           element:IsA("ImageLabel") or 
-           element:IsA("ImageButton") or 
-           element:IsA("Frame") or 
-           element:IsA("ScrollingFrame") or 
-           element:IsA("ViewportFrame") or
-           element:IsA("BillboardGui") or
-           element:IsA("SurfaceGui") then
-            
-            -- Store original properties
-            guiElements[element] = {
-                Visible = element.Visible,
-                Enabled = if element:IsA("TextButton") then element.Active else nil,
-                Parent = element.Parent
-            }
-            
-            -- Disable or hide the element
-            if element:IsA("TextButton") then
+    -- Mark as processed
+    existingElements[element] = true
+    
+    -- Only process actual GUI objects
+    if element:IsA("GuiObject") or element:IsA("TextLabel") or element:IsA("TextButton") then
+        if DESTROY_INSTEAD_OF_HIDE then
+            element:Destroy()
+        else
+            element.Visible = false
+            if element:IsA("TextButton") or element:IsA("ImageButton") then
                 element.Active = false
             end
-            element.Visible = false
-        end
-    end
-    
-    return guiElements
-end
-
-local function restoreVisuals(guiElements)
-    -- Restore all GUI elements to their original state
-    for element, properties in pairs(guiElements) do
-        if element and element.Parent then
-            if element:IsA("TextButton") and properties.Enabled ~= nil then
-                element.Active = properties.Enabled
-            end
-            element.Visible = properties.Visible
         end
     end
 end
 
--- Main execution
-local disabledElements = disableAllVisuals()
+-- Initial scan to record existing elements
+recordExistingElements()
 
--- Wait for 70 seconds
-wait(70)
+-- Set up continuous scanner
+local function scanForNewElements()
+    while true do
+        wait(SCAN_INTERVAL)
+        
+        -- Check PlayerGui for new elements
+        for _, element in ipairs(PlayerGui:GetDescendants()) do
+            handleNewElement(element)
+        end
+        
+        -- Check CoreGui for new elements
+        for _, element in ipairs(CoreGui:GetDescendants()) do
+            handleNewElement(element)
+        end
+    end
+end
 
--- Restore the GUI elements
-restoreVisuals(disabledElements)
+-- Start the scanner
+spawn(scanForNewElements)
+
+print("Active GUI monitor running - will disable only NEW interface elements")
