@@ -1,4 +1,4 @@
--- Whitelist-First GUI Cleaner (1 Minute Duration)
+-- New GUI Element Detector & Cleaner (1 Minute Duration)
 local RunService = game:GetService("RunService")
 local Players = game:GetService("Players")
 local CoreGui = game:GetService("CoreGui")
@@ -7,84 +7,95 @@ local PlayerGui = LocalPlayer:WaitForChild("PlayerGui")
 
 -- Configuration
 local DURATION = 60 -- 1 minute duration
-local DESTROY_INSTEAD_OF_HIDE = true -- Set to false to just hide elements
-local SCAN_DELAY = 0.1 -- Delay between scans (seconds)
+local DESTROY_INSTEAD_OF_HIDE = true -- Set to false to just hide
+local PROTECT_ROBLOX_UI = true -- Protect official Roblox UI elements
 
--- Whitelist storage
-local whitelist = {}
+-- Tracking
+local connections = {}
+local cleanupConnections = {}
+local startTime = os.clock()
 
--- Function to whitelist all existing elements
-local function whitelistExistingElements()
-    -- Whitelist PlayerGui elements
-    for _, element in ipairs(PlayerGui:GetDescendants()) do
-        whitelist[element] = true
-    end
+-- Function to check if element is Roblox UI
+local function isRobloxUI(element)
+    if not PROTECT_ROBLOX_UI then return false end
     
-    -- Whitelist CoreGui elements (careful with this)
-    for _, element in ipairs(CoreGui:GetDescendants()) do
-        -- Skip potentially dangerous CoreGui elements
-        if not element:IsA("LayerCollector") then
-            whitelist[element] = true
+    local protectedNames = {
+        "Chat", "PlayerList", "Health", "Backpack", 
+        "EmotesMenu", "Settings", "ShiftLock", 
+        "CoreScriptLocalization", "DevConsoleMaster",
+        "BubbleChat", "Notification", "RobloxLoadingGUI",
+        "RobloxGui", "TopBar"
+    }
+    
+    for _, name in ipairs(protectedNames) do
+        if element:IsDescendantOf(CoreGui) and element.Name == name then
+            return true
         end
     end
-    
-    print("Whitelisted", table.count(whitelist), "existing GUI elements")
+    return false
 end
 
--- Function to handle new elements
-local function handleNewElement(element)
-    -- Skip if already whitelisted
-    if whitelist[element] then return end
-    
-    -- Skip certain base classes
-    if element:IsA("LayerCollector") or element:IsA("UIStyle") then
-        whitelist[element] = true
-        return
-    end
+-- Function to clean new elements
+local function cleanNewElement(element)
+    -- Skip Roblox UI elements if protection is enabled
+    if isRobloxUI(element) then return end
     
     -- Only process GUI elements
     if element:IsA("GuiObject") or element:IsA("TextLabel") or element:IsA("TextButton") then
         if DESTROY_INSTEAD_OF_HIDE then
             element:Destroy()
-            if VERBOSE then print("Destroyed new element:", element:GetFullName()) end
+            print("Destroyed new GUI:", element:GetFullName())
         else
             element.Visible = false
             if element:IsA("TextButton") or element:IsA("ImageButton") then
                 element.Active = false
             end
-            if VERBOSE then print("Disabled new element:", element:GetFullName()) end
+            print("Disabled new GUI:", element:GetFullName())
         end
-    else
-        -- Whitelist non-GUI elements
-        whitelist[element] = true
-    end
-end
-
--- Main scanning function
-local function scanForNewElements()
-    local startTime = os.clock()
-    
-    while os.clock() - startTime < DURATION do
-        -- Scan PlayerGui for new elements
-        for _, element in ipairs(PlayerGui:GetDescendants()) do
-            handleNewElement(element)
-        end
-        
-        -- Scan CoreGui for new elements (carefully)
-        for _, element in ipairs(CoreGui:GetDescendants()) do
-            if not string.find(tostring(element.Parent), "CoreGui") then
-                handleNewElement(element)
-            end
-        end
-        
-        wait(SCAN_DELAY)
     end
     
-    print("GUI cleaning completed after 1 minute")
+    -- Set up watcher for this element's children
+    connections[element] = element.DescendantAdded:Connect(cleanNewElement)
 end
 
--- Initialization
-whitelistExistingElements()
+-- Set up main watchers
+local function setupWatchers()
+    -- Watch PlayerGui
+    connections.playerGui = PlayerGui.DescendantAdded:Connect(cleanNewElement)
+    
+    -- Watch CoreGui (carefully)
+    if not PROTECT_ROBLOX_UI then
+        connections.coreGui = CoreGui.DescendantAdded:Connect(cleanNewElement)
+    end
+    
+    -- Set up cleanup after duration
+    cleanupConnections.duration = RunService.Heartbeat:Connect(function()
+        if os.clock() - startTime >= DURATION then
+            cleanup()
+        end
+    end)
+end
 
--- Start scanning in a separate thread
-coroutine.wrap(scanForNewElements)()
+-- Cleanup function
+local function cleanup()
+    print("Stopping GUI detection after 1 minute")
+    
+    -- Disconnect all watchers
+    for _, connection in pairs(connections) do
+        connection:Disconnect()
+    end
+    
+    for _, connection in pairs(cleanupConnections) do
+        connection:Disconnect()
+    end
+    
+    connections = {}
+    cleanupConnections = {}
+end
+
+-- Start the detection
+setupWatchers()
+print("New GUI detection active for 1 minute...")
+
+-- Safety net cleanup
+delay(DURATION + 5, cleanup)
