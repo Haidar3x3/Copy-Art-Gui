@@ -1,0 +1,93 @@
+-- Services
+local Players = game:GetService("Players")
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local RunService = game:GetService("RunService")
+local UserInputService = game:GetService("UserInputService")
+local ContextActionService = game:GetService("ContextActionService")
+
+-- Player setup
+local player = Players.LocalPlayer
+local Character = player.Character or player.CharacterAdded:Wait()
+local Humanoid = Character:WaitForChild("Humanoid")
+local RootPart = Character:WaitForChild("HumanoidRootPart")
+
+-- ===== IMPROVED TAP ANIMATION SYSTEM =====
+local TAP_ANIM_ID = "rbxassetid://16144851032"
+local tapAnim = Instance.new("Animation")
+tapAnim.AnimationId = TAP_ANIM_ID
+local tapTrack = Humanoid:LoadAnimation(tapAnim)
+
+local cooldown = false
+local lastTapTime = 0
+local touchStartPos = nil
+local TOUCH_MOVE_THRESHOLD = 10 -- pixels movement allowed before cancelling tap
+
+local function OnTap(inputObject, gameProcessed)
+    -- Skip if game is processing the input or in cooldown
+    if gameProcessed or cooldown or not Character or Humanoid.Health <= 0 then 
+        return 
+    end
+
+    -- For touch devices, check if this is a proper tap (not camera movement)
+    if inputObject.UserInputType == Enum.UserInputType.Touch then
+        if inputObject.UserInputState == Enum.UserInputState.Begin then
+            touchStartPos = inputObject.Position
+        elseif inputObject.UserInputState == Enum.UserInputState.End and touchStartPos then
+            local moveDistance = (inputObject.Position - touchStartPos).Magnitude
+            if moveDistance > TOUCH_MOVE_THRESHOLD then
+                return -- Ignore if finger moved too much (camera drag)
+            end
+        end
+    end
+
+    -- Check cooldown
+    local currentTime = tick()
+    if currentTime - lastTapTime < 0.5 then return end
+    
+    -- Play animation
+    cooldown = true
+    lastTapTime = currentTime
+    
+    if tapTrack then
+        tapTrack:Stop()
+        tapTrack:Play()
+    end
+    
+    task.wait(0.5)
+    cooldown = false
+end
+
+-- Mobile touch detection with movement threshold
+UserInputService.TouchStarted:Connect(function(input, gameProcessed)
+    if not gameProcessed then
+        touchStartPos = input.Position
+    end
+end)
+
+UserInputService.TouchEnded:Connect(function(input, gameProcessed)
+    if not gameProcessed and touchStartPos then
+        local moveDistance = (input.Position - touchStartPos).Magnitude
+        if moveDistance <= TOUCH_MOVE_THRESHOLD then
+            OnTap(input, gameProcessed)
+        end
+    end
+end)
+
+-- Desktop mouse click detection
+UserInputService.InputBegan:Connect(function(input, gameProcessed)
+    if input.UserInputType == Enum.UserInputType.MouseButton1 then
+        OnTap(input, gameProcessed)
+    end
+end)
+
+-- ===== REST OF YOUR SCRIPT =====
+-- [Include all other parts of your script here exactly as before]
+-- (Anti-void plate, VFX systems, teleportation, etc.)
+
+-- Respawn handler (reload animation)
+player.CharacterAdded:Connect(function(newChar)
+    Character = newChar
+    Humanoid = newChar:WaitForChild("Humanoid")
+    RootPart = newChar:WaitForChild("HumanoidRootPart")
+    tapTrack = Humanoid:LoadAnimation(tapAnim)
+end)
