@@ -18,7 +18,7 @@ local CONFIG = {
     -- Assets (verified IDs)
     ASSETS = {
         CLOUD = "rbxassetid://116520645072301",
-        STAR = "rbxassetid://106308656631867",
+        STAR = "rbxassetid://139181389658497",
         FONT = "rbxassetid://12187372410"  -- Verified Frijole font
     },
     
