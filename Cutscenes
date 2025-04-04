@@ -1,28 +1,34 @@
+-- // Services
 local Players = game:GetService("Players")
 local RunService = game:GetService("RunService")
 local TweenService = game:GetService("TweenService")
+local ContentProvider = game:GetService("ContentProvider")
 
 -- ===== CONFIGURATION =====
 local CONFIG = {
+    -- Timing (total 40 seconds)
     DURATIONS = {
-        INITIAL_BLACK = 5,  
-        STAR_APPEAR = 7,    
+        INITIAL_BLACK = 5,
+        STAR_APPEAR = 7,
         MAIN_TRANSITION = 23,
-        FINAL_FLASH = 2,     
-        TEXT_FADE_OUT = 3,   
-        FINAL_BLACKOUT = 2.5 
+        FINAL_FLASH = 2,
+        FINAL_FADE = 3
     },
     
+    -- Assets
     ASSETS = {
-        STAR = "rbxassetid://95455071788705"
+        STAR = "rbxassetid://106308656631867",
+        FONT = "rbxasset://fonts/families/Rye.json" -- Fixed font
     },
     
+    -- Star settings
     STAR_SIZE = {
         START = 10,
         MID = 300,
         END = 350
     },
     
+    -- Text configuration
     TEXT_SEQUENCE = {
         {text = "HEY", delay = 1, duration = 2, fade = 0.5},
         {text = "I GAVE YOU MY POWER", delay = 1, duration = 3, fade = 0.5},
@@ -31,26 +37,30 @@ local CONFIG = {
     }
 }
 
-local TEXT_FONT = Enum.Font.FredokaOne -- Closest to Frijole in Roblox
-
 -- ===== SCREEN SETUP =====
 local player = Players.LocalPlayer
 local playerGui = player:WaitForChild("PlayerGui")
 
+-- Create GUI containers
 local transitionGui = Instance.new("ScreenGui")
-transitionGui.Name = "FinalCutscene"
+transitionGui.Name = "FinalTransitionRyeFont"
 transitionGui.IgnoreGuiInset = true
 transitionGui.ResetOnSpawn = false
 transitionGui.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
-transitionGui.Parent = playerGui
 
+local textGui = Instance.new("ScreenGui")
+textGui.Name = "TextAnimations"
+textGui.ResetOnSpawn = false
+textGui.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
+
+-- Black Overlay (ZIndex 1)
 local blackFrame = Instance.new("Frame")
 blackFrame.Size = UDim2.new(1, 0, 1, 0)
+blackFrame.Position = UDim2.new(0, 0, 0, 0)
 blackFrame.BackgroundColor3 = Color3.new(0, 0, 0)
-blackFrame.BackgroundTransparency = 0
-blackFrame.ZIndex = 2
-blackFrame.Parent = transitionGui
+blackFrame.ZIndex = 1
 
+-- Star Effect (ZIndex 2)
 local star = Instance.new("ImageLabel")
 star.Size = UDim2.new(0, CONFIG.STAR_SIZE.START, 0, CONFIG.STAR_SIZE.START)
 star.Position = UDim2.new(0.5, 0, 0.5, 0)
@@ -58,110 +68,137 @@ star.AnchorPoint = Vector2.new(0.5, 0.5)
 star.BackgroundTransparency = 1
 star.Image = CONFIG.ASSETS.STAR
 star.ImageTransparency = 1
-star.ZIndex = 3
-star.Parent = transitionGui
+star.ZIndex = 2
 
-local textGui = Instance.new("ScreenGui")
-textGui.Name = "TextAnimations"
-textGui.ResetOnSpawn = false
-textGui.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
+-- White Transition (ZIndex 3)
+local whiteFrame = Instance.new("Frame")
+whiteFrame.Size = UDim2.new(1, 0, 1, 0)
+whiteFrame.Position = UDim2.new(0, 0, 0, 0)
+whiteFrame.BackgroundColor3 = Color3.new(1, 1, 1)
+whiteFrame.BackgroundTransparency = 1
+whiteFrame.ZIndex = 3
+
+-- Parent elements
+blackFrame.Parent = transitionGui
+star.Parent = transitionGui
+whiteFrame.Parent = transitionGui
+transitionGui.Parent = playerGui
 textGui.Parent = playerGui
 
+-- ===== TEXT ANIMATION =====
 local function createText(text, config)
     local textLabel = Instance.new("TextLabel")
-    textLabel.Size = UDim2.new(0, 600, 0, 80)
+    textLabel.Size = UDim2.new(0, 800, 0, 100)
     textLabel.Position = UDim2.new(0.5, 0, 0.5, 0)
     textLabel.AnchorPoint = Vector2.new(0.5, 0.5)
     textLabel.BackgroundTransparency = 1
     textLabel.Text = ""
     textLabel.TextColor3 = Color3.new(1, 1, 1)
-    textLabel.TextSize = 42
-    textLabel.Font = TEXT_FONT
+    textLabel.TextSize = 48
+    textLabel.Font = Enum.Font.Rye -- Fixed font
     textLabel.TextTransparency = 1
+    textLabel.TextStrokeColor3 = Color3.new(0, 0, 0)
+    textLabel.TextStrokeTransparency = 0.7
     textLabel.ZIndex = 10
     textLabel.Parent = textGui
 
+    -- Initial delay
     task.wait(config.delay)
-    
-    local fadeIn = TweenService:Create(textLabel, TweenInfo.new(0.5), {
-        TextTransparency = 0
-    })
+
+    -- Smooth fade in
+    local fadeIn = TweenService:Create(textLabel, TweenInfo.new(0.5, Enum.EasingStyle.Quad), {TextTransparency = 0})
     fadeIn:Play()
-    
+
+    -- Typewriter effect
     for i = 1, #text do
         textLabel.Text = string.sub(text, 1, i)
         task.wait(0.07)
     end
 
+    -- Main duration
     task.wait(config.duration)
 
-    local fadeOut = TweenService:Create(textLabel, TweenInfo.new(config.fade), {
-        TextTransparency = 1
-    })
+    -- Smooth fade out
+    local fadeOut = TweenService:Create(textLabel, TweenInfo.new(config.fade, Enum.EasingStyle.Quad), {TextTransparency = 1})
     fadeOut:Play()
     fadeOut.Completed:Wait()
-    
+
+    -- Cleanup
     textLabel:Destroy()
 end
 
+-- ===== MAIN ANIMATION =====
 local function runTransition()
+    -- Initial black screen (5s)
     task.wait(CONFIG.DURATIONS.INITIAL_BLACK)
 
+    -- Start text animations
     task.spawn(function()
         for _, textConfig in ipairs(CONFIG.TEXT_SEQUENCE) do
             createText(textConfig.text, textConfig)
         end
     end)
 
-    -- Keep the black screen until STAR_APPEAR is complete
+    -- Star appearance (7s)
+    local starEndTime = os.clock() + CONFIG.DURATIONS.STAR_APPEAR
+    RunService.RenderStepped:Connect(function()
+        local progress = 1 - ((starEndTime - os.clock()) / CONFIG.DURATIONS.STAR_APPEAR)
+        
+        star.ImageTransparency = 1 - (progress * 0.7)
+        star.Size = UDim2.new(
+            0, CONFIG.STAR_SIZE.START + (CONFIG.STAR_SIZE.MID - CONFIG.STAR_SIZE.START) * progress,
+            0, CONFIG.STAR_SIZE.START + (CONFIG.STAR_SIZE.MID - CONFIG.STAR_SIZE.START) * progress
+        )
+        star.Rotation = (os.clock() * 40) % 360
+    end)
     task.wait(CONFIG.DURATIONS.STAR_APPEAR)
 
-    -- Start fading black screen during the MAIN_TRANSITION phase
-    local fadeBlack = TweenService:Create(blackFrame, TweenInfo.new(CONFIG.DURATIONS.MAIN_TRANSITION), {
-        BackgroundTransparency = 0.8
-    })
-    fadeBlack:Play()
+    -- Main transition (23s)
+    local transitionEndTime = os.clock() + CONFIG.DURATIONS.MAIN_TRANSITION
+    RunService.RenderStepped:Connect(function()
+        local progress = 1 - ((transitionEndTime - os.clock()) / CONFIG.DURATIONS.MAIN_TRANSITION)
+        
+        -- Fast transition to 70% then jump to full white
+        if progress <= 0.7 then
+            whiteFrame.BackgroundTransparency = 1 - progress / 0.7
+        else
+            whiteFrame.BackgroundTransparency = 0
+        end
 
+        star.ImageTransparency = 0.3 + (progress * 0.5)
+        star.Size = UDim2.new(
+            0, CONFIG.STAR_SIZE.MID + (CONFIG.STAR_SIZE.END - CONFIG.STAR_SIZE.MID) * progress * 0.3,
+            0, CONFIG.STAR_SIZE.MID + (CONFIG.STAR_SIZE.END - CONFIG.STAR_SIZE.MID) * progress * 0.3
+        )
+    end)
     task.wait(CONFIG.DURATIONS.MAIN_TRANSITION)
 
-    -- FINAL FLASH (2s)
+    -- Final flash (2s)
     local flash = Instance.new("Frame")
     flash.Size = UDim2.new(1, 0, 1, 0)
+    flash.Position = UDim2.new(0, 0, 0, 0)
     flash.BackgroundColor3 = Color3.new(1, 1, 1)
     flash.BackgroundTransparency = 1
     flash.ZIndex = 20
     flash.Parent = transitionGui
 
-    local flashIn = TweenService:Create(flash, TweenInfo.new(1), {
-        BackgroundTransparency = 0
-    })
-    flashIn:Play()
-    flashIn.Completed:Wait()
+    -- Flash in (1s)
+    TweenService:Create(flash, TweenInfo.new(1, Enum.EasingStyle.Quad), {BackgroundTransparency = 0}):Play()
+    task.wait(1)
 
-    local flashOut = TweenService:Create(flash, TweenInfo.new(1), {
-        BackgroundTransparency = 1
-    })
-    flashOut:Play()
-    flashOut.Completed:Wait()
+    -- Flash out (1s)
+    TweenService:Create(flash, TweenInfo.new(1, Enum.EasingStyle.Quad), {BackgroundTransparency = 1}):Play()
+    task.wait(1)
     flash:Destroy()
 
-    task.wait(CONFIG.DURATIONS.FINAL_BLACKOUT)
-    
-    local finalBlackFrame = Instance.new("Frame")
-    finalBlackFrame.Size = UDim2.new(1, 0, 1, 0)
-    finalBlackFrame.BackgroundColor3 = Color3.new(0, 0, 0)
-    finalBlackFrame.BackgroundTransparency = 1
-    finalBlackFrame.ZIndex = 100
-    finalBlackFrame.Parent = transitionGui
+    -- Final fade out (3s)
+    TweenService:Create(transitionGui, TweenInfo.new(3, Enum.EasingStyle.Quint), {BackgroundTransparency = 1}):Play()
+    task.wait(3)
 
-    local blackout = TweenService:Create(finalBlackFrame, TweenInfo.new(0.5), {
-        BackgroundTransparency = 0
-    })
-    blackout:Play()
-    blackout.Completed:Wait()
-
+    -- Cleanup
     transitionGui:Destroy()
     textGui:Destroy()
 end
 
+-- Start the animation
 runTransition()
