@@ -5,9 +5,25 @@ local TweenService = game:GetService("TweenService")
 
 -- ===== CONFIGURATION =====
 local CONFIG = {
-    DURATIONS = { INITIAL_BLACK = 5, STAR_APPEAR = 7, MAIN_TRANSITION = 23, FINAL_FLASH = 2, FINAL_FADE = 3 },
-    ASSETS = { STAR = "rbxassetid://106308656631867", FONT = "Rye" }, -- FIXED FONT
-    STAR_SIZE = { START = 10, MID = 300, END = 350 },
+    DURATIONS = {
+        INITIAL_BLACK = 5,
+        STAR_APPEAR = 7,
+        MAIN_TRANSITION = 23,
+        FINAL_FLASH = 2,
+        FINAL_FADE = 3
+    },
+
+    ASSETS = {
+        STAR = "rbxassetid://106308656631867",
+        FONT = "rbxasset://fonts/families/Rye.json"
+    },
+
+    STAR_SIZE = {
+        START = 10,
+        MID = 300,
+        END = 350
+    },
+
     TEXT_SEQUENCE = {
         {text = "HEY", delay = 1, duration = 2, fade = 0.5},
         {text = "I GAVE YOU MY POWER", delay = 1, duration = 3, fade = 0.5},
@@ -21,51 +37,82 @@ local player = Players.LocalPlayer
 local playerGui = player:WaitForChild("PlayerGui")
 
 -- Create GUI containers
-local transitionGui, textGui = Instance.new("ScreenGui"), Instance.new("ScreenGui")
-transitionGui.Name, textGui.Name = "FinalTransitionRyeFont", "TextAnimations"
-transitionGui.IgnoreGuiInset, transitionGui.ResetOnSpawn = true, false
+local transitionGui = Instance.new("ScreenGui")
+transitionGui.Name = "FinalTransitionRyeFont"
+transitionGui.IgnoreGuiInset = true
+transitionGui.ResetOnSpawn = false
+transitionGui.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
+
+local textGui = Instance.new("ScreenGui")
+textGui.Name = "TextAnimations"
+textGui.IgnoreGuiInset = true
 textGui.ResetOnSpawn = false
-transitionGui.Parent, textGui.Parent = playerGui, playerGui
+textGui.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
 
--- Create GUI Elements
-local function createGuiElement(class, props, parent)
-    local obj = Instance.new(class)
-    for k, v in pairs(props) do obj[k] = v end
-    obj.Parent = parent
-    return obj
-end
+-- Black Overlay
+local blackFrame = Instance.new("Frame")
+blackFrame.Size = UDim2.new(1, 0, 1, 0)
+blackFrame.Position = UDim2.new(0, 0, 0, 0)
+blackFrame.BackgroundColor3 = Color3.new(0, 0, 0)
+blackFrame.ZIndex = 1
+blackFrame.Parent = transitionGui
 
-local blackFrame = createGuiElement("Frame", {Size = UDim2.new(1, 0, 1, 0), BackgroundColor3 = Color3.new(0, 0, 0)}, transitionGui)
-local whiteFrame = createGuiElement("Frame", {Size = UDim2.new(1, 0, 1, 0), BackgroundColor3 = Color3.new(1, 1, 1), BackgroundTransparency = 1}, transitionGui)
-local star = createGuiElement("ImageLabel", {Size = UDim2.new(0, CONFIG.STAR_SIZE.START, 0, CONFIG.STAR_SIZE.START), AnchorPoint = Vector2.new(0.5, 0.5), BackgroundTransparency = 1, Image = CONFIG.ASSETS.STAR, ImageTransparency = 1}, transitionGui)
+-- Star Effect
+local star = Instance.new("ImageLabel")
+star.Size = UDim2.new(0, CONFIG.STAR_SIZE.START, 0, CONFIG.STAR_SIZE.START)
+star.Position = UDim2.new(0.5, 0, 0.5, 0)
+star.AnchorPoint = Vector2.new(0.5, 0.5)
+star.BackgroundTransparency = 1
+star.Image = CONFIG.ASSETS.STAR
+star.ImageTransparency = 1
+star.ZIndex = 2
+star.Parent = transitionGui
+
+-- White Flash
+local whiteFrame = Instance.new("Frame")
+whiteFrame.Size = UDim2.new(1, 0, 1, 0)
+whiteFrame.Position = UDim2.new(0, 0, 0, 0)
+whiteFrame.BackgroundColor3 = Color3.new(1, 1, 1)
+whiteFrame.BackgroundTransparency = 1
+whiteFrame.ZIndex = 3
+whiteFrame.Parent = transitionGui
+
+transitionGui.Parent = playerGui
+textGui.Parent = playerGui
 
 -- ===== TEXT ANIMATION =====
 local function createText(text, config)
-    local textLabel = createGuiElement("TextLabel", {
-        Size = UDim2.new(0, 800, 0, 100),
-        Position = UDim2.new(0.5, 0, 0.5, 0),
-        AnchorPoint = Vector2.new(0.5, 0.5),
-        BackgroundTransparency = 1,
-        Text = "",
-        TextColor3 = Color3.new(1, 1, 1),
-        TextSize = 48,
-        Font = Enum.Font[CONFIG.ASSETS.FONT], -- FIXED FONT
-        TextTransparency = 1,
-        ZIndex = 10
-    }, textGui)
+    local textLabel = Instance.new("TextLabel")
+    textLabel.Size = UDim2.new(0, 800, 0, 100)
+    textLabel.Position = UDim2.new(0.5, 0, 0.5, 0)
+    textLabel.AnchorPoint = Vector2.new(0.5, 0.5)
+    textLabel.BackgroundTransparency = 1
+    textLabel.Text = ""
+    textLabel.TextColor3 = Color3.new(1, 1, 1)
+    textLabel.TextSize = 48
+    textLabel.Font = Enum.Font.Rye
+    textLabel.TextTransparency = 1
+    textLabel.TextStrokeColor3 = Color3.new(0, 0, 0)
+    textLabel.TextStrokeTransparency = 0.7
+    textLabel.ZIndex = 10
+    textLabel.Parent = textGui
 
     task.wait(config.delay)
 
-    TweenService:Create(textLabel, TweenInfo.new(0.5, Enum.EasingStyle.Quad), {TextTransparency = 0}):Play()
+    local fadeIn = TweenService:Create(textLabel, TweenInfo.new(0.5, Enum.EasingStyle.Quad), {TextTransparency = 0})
+    fadeIn:Play()
 
     for i = 1, #text do
-        textLabel.Text = text:sub(1, i)
+        textLabel.Text = string.sub(text, 1, i)
         task.wait(0.07)
     end
 
     task.wait(config.duration)
-    TweenService:Create(textLabel, TweenInfo.new(config.fade, Enum.EasingStyle.Quad), {TextTransparency = 1}):Play()
-    task.wait(config.fade)
+
+    local fadeOut = TweenService:Create(textLabel, TweenInfo.new(config.fade, Enum.EasingStyle.Quad), {TextTransparency = 1})
+    fadeOut:Play()
+    fadeOut.Completed:Wait()
+
     textLabel:Destroy()
 end
 
@@ -79,34 +126,62 @@ local function runTransition()
         end
     end)
 
-    -- Star Animation
-    local starTween = TweenService:Create(star, TweenInfo.new(CONFIG.DURATIONS.STAR_APPEAR, Enum.EasingStyle.Quad), {ImageTransparency = 0.3, Size = UDim2.new(0, CONFIG.STAR_SIZE.MID, 0, CONFIG.STAR_SIZE.MID)})
-    starTween:Play()
-    task.wait(CONFIG.DURATIONS.STAR_APPEAR)
+    local starEndTime = os.clock() + CONFIG.DURATIONS.STAR_APPEAR
+    local starConn = RunService.RenderStepped:Connect(function()
+        local progress = 1 - ((starEndTime - os.clock()) / CONFIG.DURATIONS.STAR_APPEAR)
 
-    -- Main Transition
-    local whiteTween = TweenService:Create(whiteFrame, TweenInfo.new(CONFIG.DURATIONS.MAIN_TRANSITION, Enum.EasingStyle.Quad), {BackgroundTransparency = 0})
-    whiteTween:Play()
+        star.ImageTransparency = 1 - (progress * 0.7)
+        local size = CONFIG.STAR_SIZE.START + (CONFIG.STAR_SIZE.MID - CONFIG.STAR_SIZE.START) * progress
+        star.Size = UDim2.new(0, size, 0, size)
+        star.Rotation = (os.clock() * 40) % 360
+    end)
+    task.wait(CONFIG.DURATIONS.STAR_APPEAR)
+    starConn:Disconnect()
+
+    local transitionEndTime = os.clock() + CONFIG.DURATIONS.MAIN_TRANSITION
+    local mainConn
+    mainConn = RunService.RenderStepped:Connect(function()
+        local progress = 1 - ((transitionEndTime - os.clock()) / CONFIG.DURATIONS.MAIN_TRANSITION)
+
+        if progress <= 0.7 then
+            whiteFrame.BackgroundTransparency = 1 - progress / 0.7
+        else
+            whiteFrame.BackgroundTransparency = 0
+        end
+
+        star.ImageTransparency = 0.3 + (progress * 0.5)
+        local size = CONFIG.STAR_SIZE.MID + (CONFIG.STAR_SIZE.END - CONFIG.STAR_SIZE.MID) * progress * 0.3
+        star.Size = UDim2.new(0, size, 0, size)
+
+        -- Cleanup when white is full
+        if progress >= 1 then
+            blackFrame:Destroy()
+            star:Destroy()
+            textGui:Destroy()
+            mainConn:Disconnect()
+        end
+    end)
     task.wait(CONFIG.DURATIONS.MAIN_TRANSITION)
 
-    -- Final Flash
-    local flash = createGuiElement("Frame", {Size = UDim2.new(1, 0, 1, 0), BackgroundColor3 = Color3.new(1, 1, 1), BackgroundTransparency = 1, ZIndex = 20}, transitionGui)
-    local flashIn = TweenService:Create(flash, TweenInfo.new(1, Enum.EasingStyle.Quad), {BackgroundTransparency = 0})
-    local flashOut = TweenService:Create(flash, TweenInfo.new(1, Enum.EasingStyle.Quad), {BackgroundTransparency = 1})
-    
-    flashIn:Play()
+    local flash = Instance.new("Frame")
+    flash.Size = UDim2.new(1, 0, 1, 0)
+    flash.Position = UDim2.new(0, 0, 0, 0)
+    flash.BackgroundColor3 = Color3.new(1, 1, 1)
+    flash.BackgroundTransparency = 1
+    flash.ZIndex = 20
+    flash.Parent = transitionGui
+
+    TweenService:Create(flash, TweenInfo.new(1, Enum.EasingStyle.Quad), {BackgroundTransparency = 0}):Play()
     task.wait(1)
-    flashOut:Play()
+    TweenService:Create(flash, TweenInfo.new(1, Enum.EasingStyle.Quad), {BackgroundTransparency = 1}):Play()
     task.wait(1)
     flash:Destroy()
 
-    -- Final Fade
     TweenService:Create(transitionGui, TweenInfo.new(CONFIG.DURATIONS.FINAL_FADE, Enum.EasingStyle.Quint), {BackgroundTransparency = 1}):Play()
     task.wait(CONFIG.DURATIONS.FINAL_FADE)
 
-    -- Cleanup
     transitionGui:Destroy()
-    textGui:Destroy()
 end
 
+-- Start the animation
 runTransition()
