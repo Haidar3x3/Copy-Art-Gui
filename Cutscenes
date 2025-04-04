@@ -1,35 +1,28 @@
 local Players = game:GetService("Players")
 local RunService = game:GetService("RunService")
 local TweenService = game:GetService("TweenService")
-local ContentProvider = game:GetService("ContentProvider")
 
 -- ===== CONFIGURATION =====
 local CONFIG = {
-    -- Timing (total ~42.5 seconds)
     DURATIONS = {
-        INITIAL_BLACK = 5,          -- 5s black screen
-        STAR_APPEAR = 7,            -- 7s star appearing (12s elapsed)
-        MAIN_TRANSITION = 23,       -- 23s main transition (35s elapsed)
-        FINAL_FLASH = 2,            -- 2s final flash (37s elapsed)
-        TEXT_FADE_OUT = 3,          -- 3s "SLOWLY" fade out (40s elapsed)
-        FINAL_BLACKOUT = 2.5        -- 2.5s after text fade (42.5s total)
+        INITIAL_BLACK = 5,  
+        STAR_APPEAR = 7,    
+        MAIN_TRANSITION = 23,
+        FINAL_FLASH = 2,     
+        TEXT_FADE_OUT = 3,   
+        FINAL_BLACKOUT = 2.5 
     },
     
-    -- Assets (verified IDs)
     ASSETS = {
-        CLOUD = "rbxassetid://116520645072301",
-        STAR = "rbxassetid://95455071788705",  -- Corrected star ID
-        FONT = "rbxassetid://1380202894"  -- Rye font ID
+        STAR = "rbxassetid://95455071788705"
     },
     
-    -- Star settings
     STAR_SIZE = {
         START = 10,
         MID = 300,
         END = 350
     },
     
-    -- Text configuration
     TEXT_SEQUENCE = {
         {text = "HEY", delay = 1, duration = 2, fade = 0.5},
         {text = "I GAVE YOU MY POWER", delay = 1, duration = 3, fade = 0.5},
@@ -38,43 +31,42 @@ local CONFIG = {
     }
 }
 
--- ===== FONT LOADING =====
-local function loadFont()
-    local success, font = pcall(function()
-        ContentProvider:PreloadAsync({CONFIG.ASSETS.FONT})
-        return Font.new(CONFIG.ASSETS.FONT)
-    end)
-    
-    if success then 
-        print("Rye font loaded successfully!")
-        return font
-    else
-        warn("Failed to load Rye font, using fallback")
-        return Font.new("rbxasset://fonts/families/SourceSansPro.json")
-    end
-end
-
-local TEXT_FONT = loadFont()
+local TEXT_FONT = Enum.Font.FredokaOne -- Closest to Frijole in Roblox
 
 -- ===== SCREEN SETUP =====
 local player = Players.LocalPlayer
 local playerGui = player:WaitForChild("PlayerGui")
 
--- Create GUI containers
 local transitionGui = Instance.new("ScreenGui")
-transitionGui.Name = "FinalCutsceneRye"
+transitionGui.Name = "FinalCutscene"
 transitionGui.IgnoreGuiInset = true
 transitionGui.ResetOnSpawn = false
 transitionGui.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
+transitionGui.Parent = playerGui
+
+local blackFrame = Instance.new("Frame")
+blackFrame.Size = UDim2.new(1, 0, 1, 0)
+blackFrame.BackgroundColor3 = Color3.new(0, 0, 0)
+blackFrame.BackgroundTransparency = 0
+blackFrame.ZIndex = 2
+blackFrame.Parent = transitionGui
+
+local star = Instance.new("ImageLabel")
+star.Size = UDim2.new(0, CONFIG.STAR_SIZE.START, 0, CONFIG.STAR_SIZE.START)
+star.Position = UDim2.new(0.5, 0, 0.5, 0)
+star.AnchorPoint = Vector2.new(0.5, 0.5)
+star.BackgroundTransparency = 1
+star.Image = CONFIG.ASSETS.STAR
+star.ImageTransparency = 1
+star.ZIndex = 3
+star.Parent = transitionGui
 
 local textGui = Instance.new("ScreenGui")
 textGui.Name = "TextAnimations"
 textGui.ResetOnSpawn = false
 textGui.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
+textGui.Parent = playerGui
 
--- [Previous setup code remains the same until the createText function]
-
--- ===== TEXT ANIMATION WITH ROTATION =====
 local function createText(text, config)
     local textLabel = Instance.new("TextLabel")
     textLabel.Size = UDim2.new(0, 600, 0, 80)
@@ -84,144 +76,92 @@ local function createText(text, config)
     textLabel.Text = ""
     textLabel.TextColor3 = Color3.new(1, 1, 1)
     textLabel.TextSize = 42
-    textLabel.FontFace = TEXT_FONT
+    textLabel.Font = TEXT_FONT
     textLabel.TextTransparency = 1
-    textLabel.TextStrokeColor3 = Color3.new(0, 0, 0)
-    textLabel.TextStrokeTransparency = 0.4
     textLabel.ZIndex = 10
     textLabel.Parent = textGui
 
-    -- Wobble and rotation variables
-    local wobbleConn
-    local rotationDirection = 1  -- 1 for right, -1 for left
-    local currentRotation = 0
-    local maxRotation = 5  -- degrees
-    local rotationSpeed = 2  -- speed of rotation
-
-    -- Animation function
-    local function animateText()
-        local time = os.clock()
-        local wobbleX = math.sin(time * 3) * 5
-        local wobbleY = math.cos(time * 2.5) * 5
-        
-        -- Update rotation
-        currentRotation = currentRotation + (rotationSpeed * rotationDirection)
-        if math.abs(currentRotation) >= maxRotation then
-            rotationDirection = rotationDirection * -1  -- Reverse direction
-        end
-        
-        textLabel.Position = UDim2.new(0.5, wobbleX, 0.5, wobbleY)
-        textLabel.Rotation = currentRotation
-    end
-
-    wobbleConn = RunService.RenderStepped:Connect(animateText)
-
-    -- Initial delay
     task.wait(config.delay)
-
-    -- Smooth fade in
-    local fadeIn = TweenService:Create(textLabel, TweenInfo.new(0.5, Enum.EasingStyle.Quad), {
+    
+    local fadeIn = TweenService:Create(textLabel, TweenInfo.new(0.5), {
         TextTransparency = 0
     })
     fadeIn:Play()
-
-    -- Typewriter effect with rotation
-    local words = string.split(text, " ")
-    for i, word in ipairs(words) do
-        if i > 1 then
-            -- Add space between words
-            textLabel.Text = textLabel.Text .. " "
-            
-            -- Change rotation direction between words
-            rotationDirection = rotationDirection * -1
-            task.wait(0.1)  -- Small pause between words
-        end
-        
-        -- Add each character of the word
-        for j = 1, #word do
-            textLabel.Text = textLabel.Text .. string.sub(word, j, j)
-            task.wait(0.07)
-        end
+    
+    for i = 1, #text do
+        textLabel.Text = string.sub(text, 1, i)
+        task.wait(0.07)
     end
 
-    -- Main duration
     task.wait(config.duration)
 
-    -- Smooth fade out
-    local fadeOut = TweenService:Create(textLabel, TweenInfo.new(config.fade, Enum.EasingStyle.Quad), {
+    local fadeOut = TweenService:Create(textLabel, TweenInfo.new(config.fade), {
         TextTransparency = 1
     })
     fadeOut:Play()
     fadeOut.Completed:Wait()
-
-    -- Cleanup
-    wobbleConn:Disconnect()
+    
     textLabel:Destroy()
 end
 
--- [Rest of the script remains the same]
-
--- ===== MAIN ANIMATION =====
 local function runTransition()
-    local startTime = os.clock()
-    local connections = {}
-
-    -- Cloud movement
-    connections.clouds = RunService.RenderStepped:Connect(function()
-        local offset = (os.clock() - startTime) * 20 % 450
-        cloudFrame.Position = UDim2.new(0, -offset, 0, 0)
-    end)
-
-    -- Initial black screen (5s)
     task.wait(CONFIG.DURATIONS.INITIAL_BLACK)
 
-    -- Start text animations
-    local textCompleted = false
     task.spawn(function()
         for _, textConfig in ipairs(CONFIG.TEXT_SEQUENCE) do
             createText(textConfig.text, textConfig)
         end
-        textCompleted = true
     end)
 
-    -- Star appearance (7s)
-    local starEndTime = os.clock() + CONFIG.DURATIONS.STAR_APPEAR
-    connections.star = RunService.RenderStepped:Connect(function()
-        local progress = 1 - ((starEndTime - os.clock()) / CONFIG.DURATIONS.STAR_APPEAR)
-        
-        star.ImageTransparency = 1 - (progress * 0.7)
-        star.Size = UDim2.new(
-            0, CONFIG.STAR_SIZE.START + (CONFIG.STAR_SIZE.MID - CONFIG.STAR_SIZE.START) * progress,
-            0, CONFIG.STAR_SIZE.START + (CONFIG.STAR_SIZE.MID - CONFIG.STAR_SIZE.START) * progress
-        )
-        star.Rotation = (os.clock() * 40) % 360
-    end)
+    -- Keep the black screen until STAR_APPEAR is complete
     task.wait(CONFIG.DURATIONS.STAR_APPEAR)
 
-    -- [Rest of the animation code remains the same]
-    
-    -- Wait for "SLOWLY" text to finish fading out
-    while not textCompleted do
-        task.wait()
-    end
+    -- Start fading black screen during the MAIN_TRANSITION phase
+    local fadeBlack = TweenService:Create(blackFrame, TweenInfo.new(CONFIG.DURATIONS.MAIN_TRANSITION), {
+        BackgroundTransparency = 0.8
+    })
+    fadeBlack:Play()
 
-    -- Wait additional 2.5 seconds after text fade
+    task.wait(CONFIG.DURATIONS.MAIN_TRANSITION)
+
+    -- FINAL FLASH (2s)
+    local flash = Instance.new("Frame")
+    flash.Size = UDim2.new(1, 0, 1, 0)
+    flash.BackgroundColor3 = Color3.new(1, 1, 1)
+    flash.BackgroundTransparency = 1
+    flash.ZIndex = 20
+    flash.Parent = transitionGui
+
+    local flashIn = TweenService:Create(flash, TweenInfo.new(1), {
+        BackgroundTransparency = 0
+    })
+    flashIn:Play()
+    flashIn.Completed:Wait()
+
+    local flashOut = TweenService:Create(flash, TweenInfo.new(1), {
+        BackgroundTransparency = 1
+    })
+    flashOut:Play()
+    flashOut.Completed:Wait()
+    flash:Destroy()
+
     task.wait(CONFIG.DURATIONS.FINAL_BLACKOUT)
+    
+    local finalBlackFrame = Instance.new("Frame")
+    finalBlackFrame.Size = UDim2.new(1, 0, 1, 0)
+    finalBlackFrame.BackgroundColor3 = Color3.new(0, 0, 0)
+    finalBlackFrame.BackgroundTransparency = 1
+    finalBlackFrame.ZIndex = 100
+    finalBlackFrame.Parent = transitionGui
 
-    -- Quick fade to black (0.5s)
-    local blackout = TweenService:Create(finalBlackFrame, TweenInfo.new(0.5, Enum.EasingStyle.Quad), {
+    local blackout = TweenService:Create(finalBlackFrame, TweenInfo.new(0.5), {
         BackgroundTransparency = 0
     })
     blackout:Play()
     blackout.Completed:Wait()
 
-    -- Cleanup
-    for _, conn in pairs(connections) do
-        conn:Disconnect()
-    end
     transitionGui:Destroy()
     textGui:Destroy()
 end
 
--- Start the animation
 runTransition()
