@@ -249,8 +249,6 @@ local GLOVE_HITS = {
 
 local cooldown = false
 local connection = nil
-local lastInputTime = 0
-local MIN_INPUT_INTERVAL = 0.2 -- Minimum time between inputs to prevent accidental taps
 
 local function setupGloveAbility()
     -- Disconnect previous connection if exists
@@ -262,17 +260,9 @@ local function setupGloveAbility()
     local hitRemote = GLOVE_HITS[currentGlove] or GLOVE_HITS["Default"]
     
     connection = uis.InputBegan:Connect(function(input, gp)
-        -- Check if it's a valid input type and not game processed
         if (input.UserInputType == Enum.UserInputType.Touch or 
             input.UserInputType == Enum.UserInputType.MouseButton1) and 
             not cooldown and not gp then
-            
-            -- Prevent accidental taps by checking input timing
-            local currentTime = tick()
-            if currentTime - lastInputTime < MIN_INPUT_INTERVAL then
-                return
-            end
-            lastInputTime = currentTime
             
             cooldown = true
             
@@ -295,7 +285,7 @@ local function setupGloveAbility()
                 end
             end)
 
-            -- Cooldown system (1 seconds)
+            -- Cooldown system
             task.wait(1)
             cooldown = false
         end
