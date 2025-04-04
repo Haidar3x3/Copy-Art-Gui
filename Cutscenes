@@ -15,11 +15,11 @@ local CONFIG = {
         FINAL_BLACKOUT = 2.5        -- 2.5s after text fade (42.5s total)
     },
     
-    -- Assets
+    -- Assets (verified IDs)
     ASSETS = {
         CLOUD = "rbxassetid://116520645072301",
         STAR = "rbxassetid://106308656631867",
-        FONT = "rbxassetid://12187372410"  -- Frijole font
+        FONT = "rbxassetid://12187372410"  -- Verified Frijole font
     },
     
     -- Star settings
@@ -39,12 +39,22 @@ local CONFIG = {
 }
 
 -- ===== FONT LOADING =====
-local TEXT_FONT = Font.new("rbxasset://fonts/families/SourceSansPro.json") -- Fallback
-pcall(function()
-    ContentProvider:PreloadAsync({CONFIG.ASSETS.FONT})
-    TEXT_FONT = Font.new(CONFIG.ASSETS.FONT)
-    print("Frijole font loaded successfully")
-end)
+local function loadFont()
+    local success, font = pcall(function()
+        ContentProvider:PreloadAsync({CONFIG.ASSETS.FONT})
+        return Font.new(CONFIG.ASSETS.FONT)
+    end)
+    
+    if success then 
+        print("Frijole font loaded successfully!")
+        return font
+    else
+        warn("Failed to load Frijole font, using fallback")
+        return Font.new("rbxasset://fonts/families/SourceSansPro.json")
+    end
+end
+
+local TEXT_FONT = loadFont()
 
 -- ===== SCREEN SETUP =====
 local player = Players.LocalPlayer
@@ -67,8 +77,8 @@ local finalBlackFrame = Instance.new("Frame")
 finalBlackFrame.Size = UDim2.new(1, 0, 1, 0)
 finalBlackFrame.Position = UDim2.new(0, 0, 0, 0)
 finalBlackFrame.BackgroundColor3 = Color3.new(0, 0, 0)
-finalBlackFrame.BackgroundTransparency = 1  -- Start transparent
-finalBlackFrame.ZIndex = 100  -- Highest layer
+finalBlackFrame.BackgroundTransparency = 1
+finalBlackFrame.ZIndex = 100
 finalBlackFrame.Parent = transitionGui
 
 -- Cloud Background (ZIndex 1)
@@ -127,17 +137,17 @@ textGui.Parent = playerGui
 -- ===== TEXT ANIMATION =====
 local function createText(text, config)
     local textLabel = Instance.new("TextLabel")
-    textLabel.Size = UDim2.new(0, 800, 0, 100)
+    textLabel.Size = UDim2.new(0, 600, 0, 80)  -- Adjusted for Frijole
     textLabel.Position = UDim2.new(0.5, 0, 0.5, 0)
     textLabel.AnchorPoint = Vector2.new(0.5, 0.5)
     textLabel.BackgroundTransparency = 1
     textLabel.Text = ""
     textLabel.TextColor3 = Color3.new(1, 1, 1)
-    textLabel.TextSize = 48
-    textLabel.FontFace = TEXT_FONT  -- Using Frijole font here
+    textLabel.TextSize = 42  -- Slightly smaller for Frijole
+    textLabel.FontFace = TEXT_FONT
     textLabel.TextTransparency = 1
     textLabel.TextStrokeColor3 = Color3.new(0, 0, 0)
-    textLabel.TextStrokeTransparency = 0.7
+    textLabel.TextStrokeTransparency = 0.5  -- Stronger stroke for Frijole
     textLabel.ZIndex = 10
     textLabel.Parent = textGui
 
@@ -243,12 +253,12 @@ local function runTransition()
     flash.ZIndex = 20
     flash.Parent = transitionGui
 
-    -- Flash in (1s) with smooth easing
+    -- Flash in (1s)
     local flashIn = TweenService:Create(flash, TweenInfo.new(1, Enum.EasingStyle.Quad), {BackgroundTransparency = 0})
     flashIn:Play()
     flashIn.Completed:Wait()
 
-    -- Flash out (1s) with smooth easing
+    -- Flash out (1s)
     local flashOut = TweenService:Create(flash, TweenInfo.new(1, Enum.EasingStyle.Quad), {BackgroundTransparency = 1})
     flashOut:Play()
     flashOut.Completed:Wait()
