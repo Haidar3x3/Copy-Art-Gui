@@ -4,6 +4,16 @@ local hrp = char:WaitForChild("HumanoidRootPart")
 local debris = game:GetService("Debris")
 local uis = game:GetService("UserInputService")
 local rs = game:GetService("ReplicatedStorage")
+local GuiService = game:GetService("GuiService")
+
+-- Screen division setup
+local screenCenter = 0
+local function GetScreenInfo()
+    local screenSize = workspace.CurrentCamera.ViewportSize
+    screenCenter = screenSize.X / 2
+end
+GetScreenInfo()
+workspace.CurrentCamera:GetPropertyChangedSignal("ViewportSize"):Connect(GetScreenInfo)
 
 -- Glove hit detection function
 local function CheckChildren(Name, ...)
@@ -260,9 +270,16 @@ local function setupGloveAbility()
     local hitRemote = GLOVE_HITS[currentGlove] or GLOVE_HITS["Default"]
     
     connection = uis.InputBegan:Connect(function(input, gp)
-        if (input.UserInputType == Enum.UserInputType.Touch or 
-            input.UserInputType == Enum.UserInputType.MouseButton1) and 
-            not cooldown and not gp then
+        if not cooldown and not gp and char and hrp then
+            -- Mobile check (right side only)
+            if input.UserInputType == Enum.UserInputType.Touch then
+                if input.Position.X <= screenCenter then  -- Skip left-side touches
+                    return
+                end
+            -- Desktop check (left mouse click)
+            elseif input.UserInputType ~= Enum.UserInputType.MouseButton1 then
+                return
+            end
             
             cooldown = true
             
@@ -295,3 +312,5 @@ end
 -- Initialize and listen for glove changes
 plr.leaderstats.Glove.Changed:Connect(setupGloveAbility)
 setupGloveAbility()
+
+print("Force slap system activated - right side only for mobile")
