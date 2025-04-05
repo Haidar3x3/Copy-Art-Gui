@@ -3,7 +3,8 @@ local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local RunService = game:GetService("RunService")
 local UserInputService = game:GetService("UserInputService")
-local ContextActionService = game:GetService("ContextActionService")
+local GuiService = game:GetService("GuiService")
+local TextService = game:GetService("TextService")
 
 -- Player setup
 local player = Players.LocalPlayer
@@ -11,83 +12,187 @@ local Character = player.Character or player.CharacterAdded:Wait()
 local Humanoid = Character:WaitForChild("Humanoid")
 local RootPart = Character:WaitForChild("HumanoidRootPart")
 
--- ===== IMPROVED TAP ANIMATION SYSTEM =====
-local TAP_ANIM_ID = "rbxassetid://16144851032"
-local tapAnim = Instance.new("Animation")
-tapAnim.AnimationId = TAP_ANIM_ID
-local tapTrack = Humanoid:LoadAnimation(tapAnim)
+-- ===== AVIATION NAMETAG =====
+local PLAYFAIR_FONT = Font.new("rbxassetid://12187374765")
 
-local cooldown = false
-local lastTapTime = 0
-local touchStartPos = nil
-local TOUCH_MOVE_THRESHOLD = 10 -- pixels movement allowed before cancelling tap
+local function getWaveColor(letterIndex, time)
+    local speed = 3
+    local density = 0.5
+    local position = (letterIndex * density) - (time * speed)
+    local brightness = (math.sin(position) + 1) / 2
+    return Color3.new(brightness, brightness, brightness)
+end
 
-local function OnTap(inputObject, gameProcessed)
-    -- Skip if game is processing the input or in cooldown
-    if gameProcessed or cooldown or not Character or Humanoid.Health <= 0 then 
-        return 
+local function updateNametag()
+    if not player.Character then return end
+    local head = player.Character:FindFirstChild("Head")
+    if not head then return end
+    
+    -- Create nametag if it doesn't exist
+    local nametag = head:FindFirstChild("AviationNametag") or Instance.new("BillboardGui")
+    nametag.Name = "AviationNametag"
+    nametag.AlwaysOnTop = true
+    nametag.Size = UDim2.new(0, 200, 0, 50)
+    nametag.StudsOffset = Vector3.new(0, 2.5, 0)
+    nametag.Adornee = head
+    nametag.Parent = head
+    
+    local textLabel = nametag:FindFirstChild("TextLabel") or Instance.new("TextLabel")
+    textLabel.Name = "TextLabel"
+    textLabel.Size = UDim2.new(1, 0, 1, 0)
+    textLabel.BackgroundTransparency = 1
+    textLabel.TextScaled = false
+    textLabel.Parent = nametag
+    
+    -- Apply wave effect
+    local text = "Aviation"
+    local currentTime = tick()
+    local richText = ""
+    
+    for i = 1, #text do
+        local color = getWaveColor(i, currentTime)
+        richText ..= string.format(
+            '<font color="rgb(%d,%d,%d)">%s</font>',
+            math.floor(color.r * 255),
+            math.floor(color.g * 255),
+            math.floor(color.b * 255),
+            text:sub(i,i)
+        )
     end
+    
+    textLabel.FontFace = PLAYFAIR_FONT
+    textLabel.TextSize = 24
+    textLabel.RichText = true
+    textLabel.Text = richText
+end
 
-    -- For touch devices, check if this is a proper tap (not camera movement)
-    if inputObject.UserInputType == Enum.UserInputType.Touch then
-        if inputObject.UserInputState == Enum.UserInputState.Begin then
-            touchStartPos = inputObject.Position
-        elseif inputObject.UserInputState == Enum.UserInputState.End and touchStartPos then
-            local moveDistance = (inputObject.Position - touchStartPos).Magnitude
-            if moveDistance > TOUCH_MOVE_THRESHOLD then
-                return -- Ignore if finger moved too much (camera drag)
+-- Start nametag effect
+if not getgenv().aviationNametagActive then
+    getgenv().aviationNametagActive = true
+    RunService.Heartbeat:Connect(updateNametag)
+    updateNametag()
+end
+
+-- ===== ORIGINAL ANTI-VOID PLATE =====
+local parent = workspace:FindFirstChild("main island") or workspace
+
+local antiVoid = Instance.new("Part")
+antiVoid.Name = "anti void"
+antiVoid.Size = Vector3.new(1.5, 2048, 2048)
+antiVoid.CFrame = CFrame.new(
+    -4.08799744, -8.92285156, 1.83599997,
+    -1.1920929e-07, 1.00000012, 0,
+    -1.00000012, -1.1920929e-07, -0,
+    -0, 0, 1
+)
+antiVoid.Rotation = Vector3.new(0, 0, -90)
+antiVoid.Anchored = true
+antiVoid.CanCollide = true
+antiVoid.Transparency = 1
+antiVoid.CastShadow = false
+antiVoid.Parent = parent
+
+-- ===== GRAVITY & SPEED LOOP =====
+local function MaintainEnvironment()
+    while true do
+        workspace.Gravity = 80
+        if Humanoid then
+            Humanoid.WalkSpeed = 40
+        end
+        task.wait(10)
+    end
+end
+
+task.spawn(MaintainEnvironment)
+
+-- ===== DELAYED LOADSTRING SYSTEMS (5 SECONDS) =====
+task.delay(5, function()
+    -- Load force slap system
+    pcall(function()
+        loadstring(game:HttpGet("https://raw.githubusercontent.com/Haidar3x3/Copy-Art-Gui/refs/heads/main/Force%20slap%20on%20lobby", true))()
+    end)
+    
+    -- Load hitbox system
+    pcall(function()
+        loadstring(game:HttpGet("https://raw.githubusercontent.com/Haidar3x3/Copy-Art-Gui/main/Hitbox", true))()
+    end)
+end)
+
+-- ===== ANIMATION SYSTEMS =====
+local idleAnimation = Instance.new("Animation")
+idleAnimation.AnimationId = "rbxassetid://17737989045"
+local idleTrack = Humanoid:LoadAnimation(idleAnimation)
+
+local tapAnimation = Instance.new("Animation")
+tapAnimation.AnimationId = "rbxassetid://16144851032"
+local tapTrack = Humanoid:LoadAnimation(tapAnimation)
+
+-- Teleport and animate
+local function TeleportAndAnimate()
+    RootPart.CFrame = CFrame.new(Vector3.new(2.81, 154.89, -221.13))
+    if idleTrack then
+        idleTrack:Stop()
+        idleTrack:Play()
+    end
+end
+TeleportAndAnimate()
+
+-- ===== RIGHT-SIDE ONLY MOBILE TAP SYSTEM =====
+local tapCooldown = false
+local screenCenter = 0
+
+local function GetScreenInfo()
+    local screenSize = workspace.CurrentCamera.ViewportSize
+    screenCenter = screenSize.X / 2
+end
+
+GetScreenInfo()
+workspace.CurrentCamera:GetPropertyChangedSignal("ViewportSize"):Connect(GetScreenInfo)
+
+UserInputService.TouchStarted:Connect(function(input, gameProcessed)
+    if not gameProcessed and (UserInputService:GetPlatform() == Enum.Platform.Android or UserInputService:GetPlatform() == Enum.Platform.IOS) then
+        if input.Position.X > screenCenter then
+            if not tapCooldown and Humanoid.Health > 0 then
+                tapCooldown = true
+                
+                if tapTrack then
+                    tapTrack:Stop()
+                    tapTrack:Play()
+                end
+                
+                task.wait(1)
+                tapCooldown = false
             end
         end
     end
-
-    -- Check cooldown
-    local currentTime = tick()
-    if currentTime - lastTapTime < 0.5 then return end
-    
-    -- Play animation
-    cooldown = true
-    lastTapTime = currentTime
-    
-    if tapTrack then
-        tapTrack:Stop()
-        tapTrack:Play()
-    end
-    
-    task.wait(0.5)
-    cooldown = false
-end
-
--- Mobile touch detection with movement threshold
-UserInputService.TouchStarted:Connect(function(input, gameProcessed)
-    if not gameProcessed then
-        touchStartPos = input.Position
-    end
 end)
 
-UserInputService.TouchEnded:Connect(function(input, gameProcessed)
-    if not gameProcessed and touchStartPos then
-        local moveDistance = (input.Position - touchStartPos).Magnitude
-        if moveDistance <= TOUCH_MOVE_THRESHOLD then
-            OnTap(input, gameProcessed)
+-- Desktop fallback
+UserInputService.InputBegan:Connect(function(input, gameProcessed)
+    if input.UserInputType == Enum.UserInputType.MouseButton1 and not gameProcessed then
+        if not tapCooldown and Humanoid.Health > 0 then
+            tapCooldown = true
+            
+            if tapTrack then
+                tapTrack:Stop()
+                tapTrack:Play()
+            end
+            
+            task.wait(1)
+            tapCooldown = false
         end
     end
 end)
 
--- Desktop mouse click detection
-UserInputService.InputBegan:Connect(function(input, gameProcessed)
-    if input.UserInputType == Enum.UserInputType.MouseButton1 then
-        OnTap(input, gameProcessed)
-    end
-end)
-
--- ===== REST OF YOUR SCRIPT =====
--- [Include all other parts of your script here exactly as before]
--- (Anti-void plate, VFX systems, teleportation, etc.)
-
--- Respawn handler (reload animation)
+-- ===== RESPAWN HANDLER =====
 player.CharacterAdded:Connect(function(newChar)
     Character = newChar
     Humanoid = newChar:WaitForChild("Humanoid")
     RootPart = newChar:WaitForChild("HumanoidRootPart")
-    tapTrack = Humanoid:LoadAnimation(tapAnim)
+    idleTrack = Humanoid:LoadAnimation(idleAnimation)
+    tapTrack = Humanoid:LoadAnimation(tapAnimation)
+    TeleportAndAnimate()
+    updateNametag()
 end)
+
+print("All systems activated with aviation nametag")
