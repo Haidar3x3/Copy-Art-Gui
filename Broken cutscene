@@ -4,7 +4,6 @@ local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local RunService = game:GetService("RunService")
 local UserInputService = game:GetService("UserInputService")
 local GuiService = game:GetService("GuiService")
-local TextService = game:GetService("TextService")
 
 -- Player setup
 local player = Players.LocalPlayer
@@ -12,70 +11,97 @@ local Character = player.Character or player.CharacterAdded:Wait()
 local Humanoid = Character:WaitForChild("Humanoid")
 local RootPart = Character:WaitForChild("HumanoidRootPart")
 
--- ===== AVIATION NAMETAG =====
-local PLAYFAIR_FONT = Font.new("rbxassetid://12187374765")
+-- ===== VALKYRON NAMETAG SYSTEM =====
+local User = game:GetService("Players").LocalPlayer
 
-local function getWaveColor(letterIndex, time)
-    local speed = 3
-    local density = 0.5
-    local position = (letterIndex * density) - (time * speed)
-    local brightness = (math.sin(position) + 1) / 2
-    return Color3.new(brightness, brightness, brightness)
+-- ===== CONFIGURATION ===== --
+local SETTINGS = {
+    Name = "Valkyron",
+    
+    Font = {
+        Type = "Custom",
+        CustomId = 12187374765,  -- Playfair Display
+        Size = 28                -- Slightly larger for impact
+    },
+    
+    ColorMode = "TriColorWave",  -- Special blue-white-yellow mode
+    
+    WaveColors = {
+        Color3.fromRGB(0, 100, 255),   -- Deep blue
+        Color3.fromRGB(255, 255, 255),  -- Pure white
+        Color3.fromRGB(255, 255, 150)   -- Light yellow
+    },
+    
+    WaveSpeed = 1.8,
+    WaveWidth = 0.35
+}
+-- ===== END CONFIGURATION ===== --
+
+local FONT_FACE = Font.new("rbxassetid://"..SETTINGS.Font.CustomId)
+
+local function getTriColorWave(letterIndex, time)
+    local position = (letterIndex * SETTINGS.WaveWidth) - (time * SETTINGS.WaveSpeed)
+    local wavePos = (math.sin(position) + 1) / 2  -- Normalized 0-1
+    
+    if wavePos < 0.5 then
+        -- Blend between blue and white
+        return SETTINGS.WaveColors[1]:Lerp(SETTINGS.WaveColors[2], wavePos * 2)
+    else
+        -- Blend between white and yellow
+        return SETTINGS.WaveColors[2]:Lerp(SETTINGS.WaveColors[3], (wavePos - 0.5) * 2)
+    end
 end
 
 local function updateNametag()
-    if not player.Character then return end
-    local head = player.Character:FindFirstChild("Head")
+    if not User.Character then return end
+    local head = User.Character:FindFirstChild("Head")
     if not head then return end
+    local nametag = head:FindFirstChild("Nametag") or head:WaitForChild("Nametag", 2)
+    if not nametag then return end
     
-    -- Create nametag if it doesn't exist
-    local nametag = head:FindFirstChild("AviationNametag") or Instance.new("BillboardGui")
-    nametag.Name = "AviationNametag"
-    nametag.AlwaysOnTop = true
-    nametag.Size = UDim2.new(0, 200, 0, 50)
-    nametag.StudsOffset = Vector3.new(0, 2.5, 0)
-    nametag.Adornee = head
-    nametag.Parent = head
+    local textLabel = nametag:FindFirstChild("TextLabel")
+    if not textLabel then return end
+
+    textLabel.FontFace = FONT_FACE
+    textLabel.TextSize = SETTINGS.Font.Size
+    textLabel.TextStrokeTransparency = 0.7  -- Subtle outline for readability
     
-    local textLabel = nametag:FindFirstChild("TextLabel") or Instance.new("TextLabel")
-    textLabel.Name = "TextLabel"
-    textLabel.Size = UDim2.new(1, 0, 1, 0)
-    textLabel.BackgroundTransparency = 1
-    textLabel.TextScaled = false
-    textLabel.Parent = nametag
-    
-    -- Apply wave effect
-    local text = "Aviation"
-    local currentTime = tick()
     local richText = ""
+    local currentTime = tick()
     
-    for i = 1, #text do
-        local color = getWaveColor(i, currentTime)
+    for i = 1, #SETTINGS.Name do
+        local letter = SETTINGS.Name:sub(i,i)
+        local color = getTriColorWave(i, currentTime)
+        
         richText ..= string.format(
             '<font color="rgb(%d,%d,%d)">%s</font>',
             math.floor(color.r * 255),
             math.floor(color.g * 255),
             math.floor(color.b * 255),
-            text:sub(i,i)
+            letter
         )
     end
     
-    textLabel.FontFace = PLAYFAIR_FONT
-    textLabel.TextSize = 24
     textLabel.RichText = true
     textLabel.Text = richText
 end
 
--- Start nametag effect
-if not getgenv().aviationNametagActive then
-    getgenv().aviationNametagActive = true
-    RunService.Heartbeat:Connect(updateNametag)
-    updateNametag()
+-- Initialize with error handling
+if not getgenv().valkyronNametagActive then
+    getgenv().valkyronNametagActive = true
+    
+    local success, err = pcall(function()
+        game:GetService("RunService").Heartbeat:Connect(updateNametag)
+        updateNametag()  -- Initial update
+    end)
+    
+    if not success then
+        warn("Nametag Error: "..tostring(err))
+    end
 end
 
--- ===== ORIGINAL ANTI-VOID PLATE =====
+-- ===== ANTI-VOID PLATE =====
 local parent = workspace:FindFirstChild("main island") or workspace
-
 local antiVoid = Instance.new("Part")
 antiVoid.Name = "anti void"
 antiVoid.Size = Vector3.new(1.5, 2048, 2048)
@@ -92,6 +118,33 @@ antiVoid.Transparency = 1
 antiVoid.CastShadow = false
 antiVoid.Parent = parent
 
+-- ===== VFX SYSTEM =====
+local lastSpawnTime = 0
+local spawnDelay = 0.25
+local vfxConnection = nil
+
+local function spawnVFX()
+    local currentTime = os.clock()
+    if currentTime - lastSpawnTime >= spawnDelay and ReplicatedStorage:FindFirstChild("slapstick") then
+        pcall(function()
+            ReplicatedStorage.slapstick:FireServer("fullcharged")
+            lastSpawnTime = currentTime
+        end)
+    end
+end
+
+local function startVFX()
+    if vfxConnection then
+        vfxConnection:Disconnect()
+    end
+    
+    vfxConnection = RunService.Heartbeat:Connect(function()
+        if Humanoid.MoveDirection.Magnitude > 0 then
+            spawnVFX()
+        end
+    end)
+end
+
 -- ===== GRAVITY & SPEED LOOP =====
 local function MaintainEnvironment()
     while true do
@@ -107,12 +160,10 @@ task.spawn(MaintainEnvironment)
 
 -- ===== DELAYED LOADSTRING SYSTEMS (5 SECONDS) =====
 task.delay(5, function()
-    -- Load force slap system
     pcall(function()
         loadstring(game:HttpGet("https://raw.githubusercontent.com/Haidar3x3/Copy-Art-Gui/refs/heads/main/Force%20slap%20on%20lobby", true))()
     end)
     
-    -- Load hitbox system
     pcall(function()
         loadstring(game:HttpGet("https://raw.githubusercontent.com/Haidar3x3/Copy-Art-Gui/main/Hitbox", true))()
     end)
@@ -127,7 +178,6 @@ local tapAnimation = Instance.new("Animation")
 tapAnimation.AnimationId = "rbxassetid://16144851032"
 local tapTrack = Humanoid:LoadAnimation(tapAnimation)
 
--- Teleport and animate
 local function TeleportAndAnimate()
     RootPart.CFrame = CFrame.new(Vector3.new(2.81, 154.89, -221.13))
     if idleTrack then
@@ -167,7 +217,6 @@ UserInputService.TouchStarted:Connect(function(input, gameProcessed)
     end
 end)
 
--- Desktop fallback
 UserInputService.InputBegan:Connect(function(input, gameProcessed)
     if input.UserInputType == Enum.UserInputType.MouseButton1 and not gameProcessed then
         if not tapCooldown and Humanoid.Health > 0 then
@@ -193,6 +242,10 @@ player.CharacterAdded:Connect(function(newChar)
     tapTrack = Humanoid:LoadAnimation(tapAnimation)
     TeleportAndAnimate()
     updateNametag()
+    startVFX() -- Restart VFX on respawn
 end)
 
-print("All systems activated with aviation nametag")
+-- Start initial VFX
+startVFX()
+
+print("All systems activated with VFX")
