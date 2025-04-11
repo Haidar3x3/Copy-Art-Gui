@@ -303,7 +303,7 @@ local function setupGloveAbility()
             end)
 
             -- Cooldown system
-            task.wait(1.5)
+            task.wait(2)
             cooldown = false
         end
     end)
