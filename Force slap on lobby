@@ -313,4 +313,4 @@ end
 plr.leaderstats.Glove.Changed:Connect(setupGloveAbility)
 setupGloveAbility()
 
-print("Force slap system activated - right side only for mobile")
+print("Force slap system activated")
