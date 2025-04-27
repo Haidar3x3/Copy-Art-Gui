@@ -1,0 +1,618 @@
+local Players = game:GetService("Players")
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local RunService = game:GetService("RunService")
+local TweenService = game:GetService("TweenService")
+local LocalPlayer = Players.LocalPlayer
+local PlayerGui = LocalPlayer:WaitForChild("PlayerGui")
+local Camera = workspace.CurrentCamera
+
+-- Cleanup old GUI
+if PlayerGui:FindFirstChild("MoveSet") then
+    PlayerGui.MoveSet:Destroy()
+end
+
+-- Create main GUI
+local screenGui = Instance.new("ScreenGui", PlayerGui)
+screenGui.Name = "MoveSet"
+screenGui.ResetOnSpawn = false
+
+-- Constants for both abilities
+local BUTTON_SIZE = UDim2.new(0, 65, 0, 65)
+local BUTTON_Y_OFFSET = -75
+local BUTTON_X_OFFSET = 75 -- Space between buttons
+
+-- Create container frame for both buttons
+local containerFrame = Instance.new("Frame", screenGui)
+containerFrame.Name = "Container"
+containerFrame.Size = UDim2.new(0, BUTTON_X_OFFSET * 2, 0, BUTTON_SIZE.Y.Offset)
+containerFrame.AnchorPoint = Vector2.new(0.5, 0.5)
+containerFrame.Position = UDim2.new(0.5, 0, 1, BUTTON_Y_OFFSET)
+containerFrame.BackgroundTransparency = 1
+
+-- Function to create ability buttons
+local function CreateAbilityButton(name, positionX)
+    local abilityFrame = Instance.new("Frame", containerFrame)
+    abilityFrame.Name = name
+    abilityFrame.Size = BUTTON_SIZE
+    abilityFrame.BackgroundColor3 = Color3.fromRGB(50, 50, 50)
+    abilityFrame.BackgroundTransparency = 0.3
+    abilityFrame.Position = UDim2.new(0, positionX, 0, 0)
+    
+    local uiCorner = Instance.new("UICorner", abilityFrame)
+    uiCorner.CornerRadius = UDim.new(0, 8)
+    
+    local uiStroke = Instance.new("UIStroke", abilityFrame)
+    uiStroke.Color = Color3.fromRGB(150, 150, 150)
+
+    -- Cooldown fill
+    local fillFrame = Instance.new("Frame", abilityFrame)
+    fillFrame.Name = "CooldownFill"
+    fillFrame.Size = UDim2.new(1, 0, 1, 0)
+    fillFrame.BackgroundColor3 = Color3.new(1, 1, 1)
+    fillFrame.BackgroundTransparency = 0.7
+    fillFrame.ZIndex = 1
+    fillFrame.ClipsDescendants = true
+
+    local fill = Instance.new("Frame", fillFrame)
+    fill.BackgroundColor3 = Color3.fromRGB(80, 80, 80)
+    fill.BorderSizePixel = 0
+    fill.AnchorPoint = Vector2.new(0, 1)
+    fill.Position = UDim2.new(0, 0, 1, 0)
+    fill.Size = UDim2.new(1, 0, 1, 0)
+    fill.ZIndex = 2
+    Instance.new("UICorner", fill).CornerRadius = UDim.new(0, 8)
+
+    -- Label
+    local label = Instance.new("TextLabel", abilityFrame)
+    label.Name = "ButtonText"
+    label.Text = name
+    label.Size = UDim2.new(1, 0, 1, 0)
+    label.BackgroundTransparency = 1
+    label.TextColor3 = Color3.new(1, 1, 1)
+    label.TextScaled = true
+    label.Font = Enum.Font.GothamBold
+    label.ZIndex = 3
+    
+    local labelStroke = Instance.new("UIStroke", label)
+    labelStroke.Color = Color3.new(0, 0, 0)
+    labelStroke.Thickness = 1
+    labelStroke.ApplyStrokeMode = Enum.ApplyStrokeMode.Contextual
+
+    -- TextButton
+    local textButton = Instance.new("TextButton", abilityFrame)
+    textButton.Name = "TextButton"
+    textButton.Text = ""
+    textButton.Size = UDim2.new(1, 0, 1, 0)
+    textButton.BackgroundTransparency = 1
+    textButton.ZIndex = 4
+
+    return textButton, fill, label
+end
+
+-- Create both ability buttons
+local smoothStrikeButton, smoothStrikeFill, smoothStrikeLabel = CreateAbilityButton("Smooth Strike", 0)
+local heavenlyLiftButton, heavenlyLiftFill, heavenlyLiftLabel = CreateAbilityButton("Heavenly Lift", BUTTON_X_OFFSET)
+
+-- ===== GLOVE HIT SYSTEM =====
+local function CheckChildren(name)
+    return ReplicatedStorage:FindFirstChild(name) or ReplicatedStorage:FindFirstChild(string.lower(name))
+end
+
+local GLOVE_HITS = {
+    -- Default gloves
+    ["Default"] = CheckChildren("b"),
+    ["Extended"] = CheckChildren("b"),
+    
+    -- General Hit gloves
+    ["T H I C K"] = CheckChildren("GeneralHit"),
+    ["Squid"] = CheckChildren("GeneralHit"),
+    ["Gummy"] = CheckChildren("GeneralHit"),
+    ["RNG"] = CheckChildren("GeneralHit"),
+    ["Tycoon"] = CheckChildren("GeneralHit"),
+    ["Charge"] = CheckChildren("GeneralHit"),
+    ["Baller"] = CheckChildren("GeneralHit"),
+    ["Tableflip"] = CheckChildren("GeneralHit"),
+    ["Booster"] = CheckChildren("GeneralHit"),
+    ["Shield"] = CheckChildren("GeneralHit"),
+    ["Track"] = CheckChildren("GeneralHit"),
+    ["Goofy"] = CheckChildren("GeneralHit"),
+    ["Confusion"] = CheckChildren("GeneralHit"),
+    ["Elude"] = CheckChildren("GeneralHit"),
+    ["Glitch"] = CheckChildren("GeneralHit"),
+    ["Snowball"] = CheckChildren("GeneralHit"),
+    ["fish"] = CheckChildren("GeneralHit"),
+    ["Killerfish"] = CheckChildren("GeneralHit"),
+    ["🗿"] = CheckChildren("GeneralHit"),
+    ["Obby"] = CheckChildren("GeneralHit"),
+    ["Voodoo"] = CheckChildren("GeneralHit"),
+    ["Leash"] = CheckChildren("GeneralHit"),
+    ["Flamarang"] = CheckChildren("GeneralHit"),
+    ["Berserk"] = CheckChildren("GeneralHit"),
+    ["Quake"] = CheckChildren("GeneralHit"),
+    ["Rattlebones"] = CheckChildren("GeneralHit"),
+    ["Chain"] = CheckChildren("GeneralHit"),
+    ["Ping Pong"] = CheckChildren("GeneralHit"),
+    ["Whirlwind"] = CheckChildren("GeneralHit"),
+    ["Slicer"] = CheckChildren("GeneralHit"),
+    ["Counter"] = CheckChildren("GeneralHit"),
+    ["Hammer"] = CheckChildren("GeneralHit"),
+    ["Excavator"] = CheckChildren("GeneralHit"),
+    ["Home Run"] = CheckChildren("GeneralHit"),
+    ["Psycho"] = CheckChildren("GeneralHit"),
+    ["Kraken"] = CheckChildren("GeneralHit"),
+    ["Gravity"] = CheckChildren("GeneralHit"),
+    ["Lure"] = CheckChildren("GeneralHit"),
+    ["Jebaited"] = CheckChildren("GeneralHit"),
+    ["Meteor"] = CheckChildren("GeneralHit"),
+    ["Tinkerer"] = CheckChildren("GeneralHit"),    
+    ["Guardian Angel"] = CheckChildren("GeneralHit"),
+    ["Sun"] = CheckChildren("GeneralHit"),
+    ["Necromancer"] = CheckChildren("GeneralHit"),
+    ["Zombie"] = CheckChildren("GeneralHit"),
+    ["Dual"] = CheckChildren("GeneralHit"),
+    ["Alchemist"] = CheckChildren("GeneralHit"),
+    ["Parry"] = CheckChildren("GeneralHit"),
+    ["Druid"] = CheckChildren("GeneralHit"),
+    ["Oven"] = CheckChildren("GeneralHit"),
+    ["Jester"] = CheckChildren("GeneralHit"),
+    ["Ferryman"] = CheckChildren("GeneralHit"),
+    ["Scythe"] = CheckChildren("GeneralHit"),
+    ["Blackhole"] = CheckChildren("GeneralHit"),
+    ["Santa"] = CheckChildren("GeneralHit"),
+    ["Grapple"] = CheckChildren("GeneralHit"),
+    ["Iceskate"] = CheckChildren("GeneralHit"),
+    ["Pan"] = CheckChildren("GeneralHit"),
+    ["Blasphemy"] = CheckChildren("GeneralHit"),
+    ["Blink"] = CheckChildren("GeneralHit"),
+    ["Ultra Instinct"] = CheckChildren("GeneralHit"),
+    ["Admin"] = CheckChildren("GeneralHit"),
+    ["Prop"] = CheckChildren("GeneralHit"),
+    ["Joust"] = CheckChildren("GeneralHit"),
+    ["Slapstick"] = CheckChildren("GeneralHit"),
+    ["Firework"] = CheckChildren("GeneralHit"),
+    ["Run"] = CheckChildren("GeneralHit"),
+    ["Beatdown"] = CheckChildren("GeneralHit"),
+    ["L.O.L.B.O.M.B"] = CheckChildren("GeneralHit"),
+    ["Glovel"] = CheckChildren("GeneralHit"),
+    ["Chicken"] = CheckChildren("GeneralHit"),
+    ["Divebomb"] = CheckChildren("GeneralHit"),
+    ["Lamp"] = CheckChildren("GeneralHit"),
+    ["Pocket"] = CheckChildren("GeneralHit"),
+    ["BONK"] = CheckChildren("GeneralHit"),
+    ["Knockoff"] = CheckChildren("GeneralHit"),
+    ["Divert"] = CheckChildren("GeneralHit"),
+    ["Frostbite"] = CheckChildren("GeneralHit"),
+    ["Sbeve"] = CheckChildren("GeneralHit"),
+    ["Plank"] = CheckChildren("GeneralHit"),
+    ["Golem"] = CheckChildren("GeneralHit"),
+    ["Spoonful"] = CheckChildren("GeneralHit"),
+    ["Grab"] = CheckChildren("GeneralHit"),
+    ["the schlop"] = CheckChildren("GeneralHit"),
+    ["UFO"] = CheckChildren("GeneralHit"),
+    ["el gato"] = CheckChildren("GeneralHit"),
+    ["Siphon"] = CheckChildren("GeneralHit"),
+    ["Hive"] = CheckChildren("GeneralHit"),
+    ["Wrench"] = CheckChildren("GeneralHit"),
+    ["Hunter"] = CheckChildren("GeneralHit"),
+    ["Relude"] = CheckChildren("GeneralHit"),
+    ["Avatar"] = CheckChildren("GeneralHit"),
+    ["Demolition"] = CheckChildren("GeneralHit"),
+    ["Shotgun"] = CheckChildren("GeneralHit"),
+    ["Beachball"] = CheckChildren("GeneralHit"),
+    ["Water"] = CheckChildren("GeneralHit"),
+    ["Fan"] = CheckChildren("GeneralHit"),
+    ["Boxer"] = CheckChildren("GeneralHit"),
+    ["Titan"] = CheckChildren("GeneralHit"),
+    ["64"] = CheckChildren("GeneralHit"),
+    ["Clock"] = CheckChildren("GeneralHit"),
+    ["Lawnmower"] = CheckChildren("GeneralHit"),
+    ["Snowroller"] = CheckChildren("GeneralHit"),
+    ["Metaverse"] = CheckChildren("GeneralHit"),
+    ["Medusa"] = CheckChildren("GeneralHit"),
+    ["Agro"] = CheckChildren("GeneralHit"),
+    ["Infinity"] = CheckChildren("GeneralHit"),
+    ["Seal"] = CheckChildren("GeneralHit"),
+    ["Mouse"] = CheckChildren("GeneralHit"),
+
+    -- Special gloves with unique hits
+    ["ZZZZZZZ"] = CheckChildren("ZZZZZZZHit"),
+    ["Brick"] = CheckChildren("BrickHit"),
+    ["Snow"] = CheckChildren("SnowHit"),
+    ["Pull"] = CheckChildren("PullHit"),
+    ["Flash"] = CheckChildren("FlashHit"),
+    ["Spring"] = CheckChildren("springhit"),
+    ["Swapper"] = CheckChildren("HitSwapper"),
+    ["Bull"] = CheckChildren("BullHit"),
+    ["Dice"] = CheckChildren("DiceHit"),
+    ["Ghost"] = CheckChildren("GhostHit"),
+    ["Thanos"] = CheckChildren("ThanosHit"),
+    ["Stun"] = CheckChildren("HtStun"),
+    ["Za Hando"] = CheckChildren("zhramt"),
+    ["Fort"] = CheckChildren("Fort"),
+    ["Magnet"] = CheckChildren("MagnetHIT"),
+    ["Pusher"] = CheckChildren("PusherHit"),
+    ["Anchor"] = CheckChildren("hitAnchor"),
+    ["Space"] = CheckChildren("HtSpace"),
+    ["Boomerang"] = CheckChildren("BoomerangH"),
+    ["Speedrun"] = CheckChildren("Speedrunhit"),
+    ["Mail"] = CheckChildren("MailHit"),
+    ["Golden"] = CheckChildren("GoldenHit"),
+    ["MR"] = CheckChildren("MisterHit"),
+    ["Reaper"] = CheckChildren("ReaperHit"),
+    ["Replica"] = CheckChildren("ReplicaHit"),
+    ["Defense"] = CheckChildren("DefenseHit"),
+    ["Killstreak"] = CheckChildren("KSHit"),
+    ["Reverse"] = CheckChildren("ReverseHit"),
+    ["Shukuchi"] = CheckChildren("ShukuchiHit"),
+    ["Duelist"] = CheckChildren("DuelistHit"),
+    ["woah"] = CheckChildren("woahHit"),
+    ["Ice"] = CheckChildren("IceHit"),
+    ["Adios"] = CheckChildren("hitAdios"),
+    ["Blocked"] = CheckChildren("BlockedHit"),
+    ["Engineer"] = CheckChildren("engiehit"),
+    ["Rocky"] = CheckChildren("RockyHit"),
+    ["Conveyor"] = CheckChildren("ConvHit"),
+    ["STOP"] = CheckChildren("STOP"),
+    ["Phantom"] = CheckChildren("PhantomHit"),
+    ["Wormhole"] = CheckChildren("WormHit"),
+    ["Acrobat"] = CheckChildren("AcHit"),
+    ["Plague"] = CheckChildren("PlagueHit"),
+    ["[REDACTED]"] = CheckChildren("ReHit"),
+    ["bus"] = CheckChildren("hitbus"),
+    ["Phase"] = CheckChildren("PhaseH"),
+    ["Warp"] = CheckChildren("WarpHt"),
+    ["Bomb"] = CheckChildren("BombHit"),
+    ["Bubble"] = CheckChildren("BubbleHit"),
+    ["Jet"] = CheckChildren("JetHit"),
+    ["Shard"] = CheckChildren("ShardHIT"),
+    ["potato"] = CheckChildren("potatohit"),
+    ["CULT"] = CheckChildren("CULTHit"),
+    ["bob"] = CheckChildren("bobhit"),
+    ["Buddies"] = CheckChildren("buddiesHIT"),
+    ["Spy"] = CheckChildren("SpyHit"),
+    ["Detonator"] = CheckChildren("DetonatorHit"),
+    ["Rage"] = CheckChildren("GRRRR"),
+    ["Trap"] = CheckChildren("traphi"),
+    ["Orbit"] = CheckChildren("Orbihit"),
+    ["Hybrid"] = CheckChildren("HybridCLAP"),
+    ["Slapple"] = CheckChildren("SlappleHit"),
+    ["Disarm"] = CheckChildren("DisarmH"),
+    ["Dominance"] = CheckChildren("DominanceHit"),
+    ["Link"] = CheckChildren("LinkHit"),
+    ["Rojo"] = CheckChildren("RojoHit"),
+    ["rob"] = CheckChildren("robhit"),
+    ["Rhythm"] = CheckChildren("rhythmhit"),
+    ["Nightmare"] = CheckChildren("nightmarehit"),
+    ["Hitman"] = CheckChildren("HitmanHit"),
+    ["Thor"] = CheckChildren("ThorHit"),
+    ["Retro"] = CheckChildren("RetroHit"),
+    ["Cloud"] = CheckChildren("CloudHit"),
+    ["Null"] = CheckChildren("NullHit"),
+    ["spin"] = CheckChildren("spinhit"),
+    
+    -- Stun gloves
+    ["Kinetic"] = CheckChildren("HtStun"),
+    ["Recall"] = CheckChildren("HtStun"),
+    ["Balloony"] = CheckChildren("HtStun"),
+    ["Sparky"] = CheckChildren("HtStun"),
+    ["Boogie"] = CheckChildren("HtStun"),
+    ["Stun"] = CheckChildren("HtStun"),
+    ["Coil"] = CheckChildren("HtStun"),
+    
+    -- Diamond gloves
+    ["Diamond"] = CheckChildren("DiamondHit"),
+    ["Megarock"] = CheckChildren("DiamondHit"),
+    
+    -- Celestial gloves
+    ["Moon"] = CheckChildren("CelestialHit"),
+    ["Jupiter"] = CheckChildren("CelestialHit"),
+    
+    -- Hard gloves
+    ["Mitten"] = CheckChildren("MittenHit"),
+    ["Hallow Jack"] = CheckChildren("HallowHIT"),
+    
+    -- Power gloves
+    ["OVERKILL"] = CheckChildren("Overkillhit"),
+    ["The Flex"] = CheckChildren("FlexHit"),
+    ["Custom"] = CheckChildren("CustomHit"),
+    ["God's Hand"] = CheckChildren("Godshand"),
+    ["Error"] = CheckChildren("Errorhit"),
+    
+    -- UTG gloves
+    ["Untitled Tag Glove"] = CheckChildren("UTGHit"),
+    ["Poltergeist"] = CheckChildren("UTGHit")
+}
+
+local function GetHitRemote(gloveName)
+    -- Safety checks
+    if not gloveName or type(gloveName) ~= "string" then
+        return CheckChildren("b") or CheckChildren("GeneralHit")
+    end
+
+    -- First try exact name match
+    local remote = GLOVE_HITS[gloveName]
+    if remote then return remote end
+    
+    -- Try common variations
+    local variations = {
+        gloveName.."Hit",
+        "Hit"..gloveName,
+        gloveName.."HIT",
+        "Ht"..gloveName,
+        gloveName.."hit",
+        string.lower(gloveName).."hit",
+        "hit"..string.lower(gloveName)
+    }
+    
+    for _, variation in ipairs(variations) do
+        local remote = CheckChildren(variation)
+        if remote then return remote end
+    end
+    
+    -- Final fallback
+    return CheckChildren("GeneralHit") or CheckChildren("b")
+end
+
+-- ===== SMOOTH STRIKE ABILITY =====
+local SMOOTH_STRIKE_COOLDOWN = 5
+local SMOOTH_STRIKE_DISTANCE = 25
+local SMOOTH_STRIKE_DURATION = 0.6
+local ATTACK_RADIUS = 10
+local SMOOTH_STRIKE_ANIMATION = Instance.new("Animation")
+SMOOTH_STRIKE_ANIMATION.AnimationId = "rbxassetid://16144851032"
+
+local canSmoothStrike = true
+
+local function radiusAttack()
+    local character = LocalPlayer.Character
+    if not character then return end
+    
+    local root = character:FindFirstChild("HumanoidRootPart")
+    if not root then return end
+
+    -- Get current glove safely
+    local currentGlove = "Default"
+    if LocalPlayer:FindFirstChild("leaderstats") then
+        local gloveStat = LocalPlayer.leaderstats:FindFirstChild("Glove")
+        if gloveStat then
+            currentGlove = gloveStat.Value or "Default"
+        end
+    end
+
+    local hitRemote = GetHitRemote(currentGlove)
+    if not hitRemote then
+        warn("Failed to find hit remote for glove:", currentGlove)
+        return
+    end
+
+    local hitPlayers = {}
+    
+    for _, player in ipairs(Players:GetPlayers()) do
+        if player ~= LocalPlayer and player.Character then
+            local targetRoot = player.Character:FindFirstChild("HumanoidRootPart")
+            if targetRoot then
+                local distance = (targetRoot.Position - root.Position).Magnitude
+                if distance <= ATTACK_RADIUS and not hitPlayers[player] then
+                    hitPlayers[player] = true
+                    
+                    -- Target head if possible
+                    local head = player.Character:FindFirstChild("Head")
+                    local targetPart = head or targetRoot
+                    
+                    -- Execute hit
+                    if targetPart then
+                        pcall(function()
+                            hitRemote:FireServer(targetPart)
+                        end)
+                    end
+                end
+            end
+        end
+    end
+end
+
+smoothStrikeButton.MouseButton1Click:Connect(function()
+    if not canSmoothStrike then return end
+    canSmoothStrike = false
+
+    local character = LocalPlayer.Character
+    if not character then return end
+    
+    local humanoid = character:FindFirstChild("Humanoid")
+    local root = character:FindFirstChild("HumanoidRootPart")
+    if not humanoid or not root then return end
+
+    -- Play animation safely
+    local animator = humanoid:FindFirstChildOfClass("Animator")
+    if animator then
+        local animTrack = animator:LoadAnimation(SMOOTH_STRIKE_ANIMATION)
+        if animTrack then
+            animTrack:Play()
+        end
+    end
+
+    -- VFX
+    if ReplicatedStorage:FindFirstChild("Prop") then
+        ReplicatedStorage.Prop:FireServer()
+    end
+
+    -- Cooldown
+    task.spawn(function()
+        local startTime = tick()
+        while tick() - startTime < SMOOTH_STRIKE_COOLDOWN do
+            local progress = (tick() - startTime) / SMOOTH_STRIKE_COOLDOWN
+            smoothStrikeFill.Position = UDim2.new(0, 0, 1 - progress, 0)
+            task.wait()
+        end
+        smoothStrikeFill.Position = UDim2.new(0, 0, 1, 0)
+        canSmoothStrike = true
+    end)
+
+    -- Initial attack
+    radiusAttack()
+
+    -- Dash movement
+    local dashSpeed = SMOOTH_STRIKE_DISTANCE / SMOOTH_STRIKE_DURATION
+    local direction = root.CFrame.LookVector
+    local startTime = tick()
+
+    local conn
+    conn = RunService.Heartbeat:Connect(function(dt)
+        local elapsed = tick() - startTime
+        if elapsed >= SMOOTH_STRIKE_DURATION then
+            conn:Disconnect()
+            if ReplicatedStorage:FindFirstChild("Prop") then
+                ReplicatedStorage.Prop:FireServer()
+            end
+            return
+        end
+
+        -- Move character
+        local moveStep = direction * dashSpeed * dt
+        root.CFrame = root.CFrame + moveStep
+
+        -- Mid-dash attack
+        if elapsed > SMOOTH_STRIKE_DURATION * 0.5 then
+            radiusAttack()
+        end
+    end)
+end)
+
+-- ===== HEAVENLY LIFT ABILITY =====
+local HEAVENLY_LIFT_COOLDOWN = 15
+local HEAVENLY_LIFT_DURATION = 10
+local DEFAULT_FOV = Camera.FieldOfView
+
+local canHeavenlyLift = true
+local isLifting = false
+local bodyGyro, bodyVelocity
+local flyConnection
+local speedIncreaseCoroutine
+
+local function StartHeavenlyLift()
+    if not canHeavenlyLift then return end
+    
+    local character = LocalPlayer.Character
+    if not character then return end
+    
+    local hrp = character:FindFirstChild("HumanoidRootPart")
+    if not hrp then return end
+
+    isLifting = true
+    heavenlyLiftLabel.Text = "Descent"
+
+    -- Create BodyMovers
+    bodyGyro = Instance.new("BodyGyro")
+    bodyVelocity = Instance.new("BodyVelocity")
+
+    bodyGyro.P = 2e3
+    bodyGyro.MaxTorque = Vector3.new(40000, 40000, 40000)
+    bodyGyro.CFrame = hrp.CFrame
+    bodyGyro.Parent = hrp
+
+    bodyVelocity.Velocity = Vector3.new(0, 40, 0)
+    bodyVelocity.MaxForce = Vector3.new(9e9, 9e9, 9e9)
+    bodyVelocity.Parent = hrp
+
+    -- Smooth Lift Phase
+    local liftTime = 1.5
+    local liftStart = tick()
+
+    -- FOV Tween
+    local liftingTween = TweenService:Create(Camera, TweenInfo.new(liftTime, Enum.EasingStyle.Sine, Enum.EasingDirection.Out), {FieldOfView = DEFAULT_FOV + 10})
+    liftingTween:Play()
+
+    while tick() - liftStart < liftTime and isLifting do
+        RunService.RenderStepped:Wait()
+        bodyVelocity.Velocity = Vector3.new(0, 40, 0)
+        bodyGyro.CFrame = hrp.CFrame
+    end
+
+    if not isLifting then return end
+
+    -- Flight parameters
+    local flySpeed = 50
+
+    -- Camera control blending
+    task.spawn(function()
+        for i = 1, 30 do
+            if not isLifting then break end
+            bodyGyro.P = math.clamp(bodyGyro.P + 3000, 2000, 90000)
+            RunService.RenderStepped:Wait()
+        end
+    end)
+
+    -- Flight loop
+    flyConnection = RunService.RenderStepped:Connect(function()
+        if isLifting then
+            local moveDirection = Camera.CFrame.LookVector
+            bodyVelocity.Velocity = moveDirection * flySpeed
+            bodyGyro.CFrame = Camera.CFrame
+        end
+    end)
+
+    -- FOV Effect
+    local flyTween = TweenService:Create(Camera, TweenInfo.new(1, Enum.EasingStyle.Sine, Enum.EasingDirection.Out), {FieldOfView = DEFAULT_FOV + 20})
+    flyTween:Play()
+
+    -- Speed boosts
+    speedIncreaseCoroutine = task.spawn(function()
+        local boostCount = 0
+        local propRemote = ReplicatedStorage:FindFirstChild("Prop")
+        while isLifting and boostCount < 3 do
+            task.wait(5)
+            if isLifting then
+                flySpeed += 10
+                boostCount += 1
+                if propRemote then
+                    for i = 1, boostCount do
+                        propRemote:FireServer()
+                        task.wait(0.25)
+                    end
+                end
+            end
+        end
+    end)
+
+    -- Auto-stop timer
+    task.delay(HEAVENLY_LIFT_DURATION, function()
+        if isLifting then
+            StopHeavenlyLift()
+        end
+    end)
+end
+
+local function StopHeavenlyLift()
+    isLifting = false
+    heavenlyLiftLabel.Text = "Heavenly Lift"
+
+    if bodyGyro then bodyGyro:Destroy() end
+    if bodyVelocity then bodyVelocity:Destroy() end
+    if flyConnection then flyConnection:Disconnect() end
+    if speedIncreaseCoroutine then task.cancel(speedIncreaseCoroutine) end
+
+    -- Reset FOV
+    local resetFOV = TweenService:Create(Camera, TweenInfo.new(0.5, Enum.EasingStyle.Sine, Enum.EasingDirection.Out), {FieldOfView = DEFAULT_FOV})
+    resetFOV:Play()
+
+    -- Cooldown
+    canHeavenlyLift = false
+    task.spawn(function()
+        local startTime = tick()
+        while tick() - startTime < HEAVENLY_LIFT_COOLDOWN do
+            local progress = (tick() - startTime) / HEAVENLY_LIFT_COOLDOWN
+            heavenlyLiftFill.Position = UDim2.new(0, 0, 1 - progress, 0)
+            task.wait()
+        end
+        heavenlyLiftFill.Position = UDim2.new(0, 0, 1, 0)
+        canHeavenlyLift = true
+    end)
+end
+
+heavenlyLiftButton.MouseButton1Click:Connect(function()
+    if isLifting then
+        StopHeavenlyLift()
+    else
+        StartHeavenlyLift()
+    end
+end)
